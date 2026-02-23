@@ -12,10 +12,7 @@ const Login = () => {
     const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
@@ -23,40 +20,45 @@ const Login = () => {
         setError('');
 
         try {
-            // api.js'de base URL'i verdiğimiz için sadece endpoint'i yazıyoruz
+            // 1. Giriş yap ve temel bilgileri al
             const response = await api.post('/users/login', {
                 usernameoremail: formData.username,
                 password: formData.password
             });
+            const loginData = response.data.data;
 
-            // Axios ile veri direkt response.data içinde gelir
-            const data = response.data;
+            // 2. İkinci isteği atabilmek için Token'ı kaydet
+            localStorage.setItem('token', loginData.accessToken);
 
-            // Token ve kullanıcı bilgilerini kaydediyoruz
-            localStorage.setItem('token', data.data.accessToken);
-            localStorage.setItem('user', JSON.stringify(data.data));
+            // 3. Kullanıcının YETKİLERİNİ çekmek için kendi profiline istek at
+            const profileRes = await api.get(`/users/${loginData.id}`);
+            const profileData = profileRes.data.data;
 
-            const userID = data.data.id;
+            // 4. Yetkileri loginDatasına ekleyip localStorage'a son halini yaz
+            const finalUser = {
+                ...loginData,
+                privileges: profileData.privileges || [] // Backend'den gelen yetki dizisi
+            };
+            localStorage.setItem('user', JSON.stringify(finalUser));
 
-            // ADMİN KONTROLÜ (Sabit ID Mantığı)
-            // Eğer giriş yapan ID 1 ise admin paneline, değilse normal öğrenci anasayfasına
-            if (userID === 4) {
+            // 5. Yönlendirme Kontrolü (Veritabanında Admin mi?)
+            if (finalUser.privileges.includes('Admin')) {
                 navigate('/admin-panel');
             } else {
                 navigate('/anasayfa');
             }
 
         } catch (err) {
-            // Axios'ta hata mesajları err.response.data içinde döner
             const errorMessage = err.response?.data?.message || 'Giriş başarısız oldu, bilgilerinizi kontrol edin.';
             setError(errorMessage);
+            localStorage.removeItem('token'); // Hata olursa bozuk veriyi sil
         }
     };
 
     return (
         <div className="container">
             <div className="card">
-                <h2 className="title">Öğrenci Girişi</h2>
+                <h2 className="title">Sisteme Giriş</h2>
 
                 {error && <div className="error">{error}</div>}
 

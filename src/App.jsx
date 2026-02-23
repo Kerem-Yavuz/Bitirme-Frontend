@@ -10,17 +10,17 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* MENÜSÜZ (BAĞIMSIZ) SAYFALAR */}
+        //* MENÜSÜZ (BAĞIMSIZ) GİRİŞ SAYFASI
         <Route path="/" element={<Login />} />
 
-        {/* Admin panelini Layout'un dışına çıkardık, artık sol menü görünmeyecek */}
-        <Route path="/admin-panel" element={<AdminPanel />} />
-
-        {/* MENÜLÜ (ÖĞRENCİ) SAYFALARI */}
+        //* MENÜLÜ ANA YAPI (Öğrenci ve Admin Ortak Kullanır)
         <Route element={<Layout />}>
           <Route path="/anasayfa" element={<Anasayfa />} />
           <Route path="/ders-secimi/:semesterId" element={<DersProgrami />} />
           <Route path="/profil" element={<Profile />} />
+
+          //* Admin panelini tekrar Layout'un içine aldık
+          <Route path="/admin-panel" element={<AdminPanel />} />
         </Route>
 
       </Routes>

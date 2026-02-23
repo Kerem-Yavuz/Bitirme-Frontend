@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Yönlendirme için eklendi
 import api from './api';
 import './App.css';
 
 const AdminPanel = () => {
     const [activeModal, setActiveModal] = useState(null);
-    const navigate = useNavigate(); // Yönlendirme fonksiyonunu tanımladık
 
     // --- STATE'LER ---
     const [userForm, setUserForm] = useState({ fullName: '', email: '', password: '', phoneNo: '', departmentID: '' });
@@ -21,21 +19,6 @@ const AdminPanel = () => {
         setActiveModal(null);
         setUserStatus({ message: '', error: '' });
         setLessonStatus({ message: '', error: '' });
-    };
-
-    // --- ÇIKIŞ YAPMA İŞLEMİ ---
-    const handleLogout = async () => {
-        try {
-            // Backend'deki logout rotasına istek at (Token'ı veritabanında isRevoked = 1 yapar)
-            await api.post('/users/logout');
-        } catch (error) {
-            console.error("Çıkış işlemi sırasında sunucu hatası:", error);
-        } finally {
-            // Sunucu hata verse bile tarayıcıdaki oturum bilgilerini sil ve anasayfaya dön
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            navigate('/'); // Giriş sayfasına (Login) yönlendir
-        }
     };
 
     // --- FORM GÖNDERME İŞLEMLERİ ---
@@ -73,16 +56,12 @@ const AdminPanel = () => {
     };
 
     return (
-        <div style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f4f7f6', position: 'absolute', top: 0, left: 0 }}>
+        // Sayfanın geri kalanını güzelce kaplaması için kapsayıcıyı sadeleştirdik
+        <div style={{ width: '100%', padding: '20px', boxSizing: 'border-box' }}>
 
-            {/* SAĞ ÜST KÖŞEDEKİ ÇIKIŞ BUTONU */}
-            <button className="logout-btn" onClick={handleLogout}>
-                🚪 Çıkış Yap
-            </button>
+            <h1 style={{ textAlign: 'center', marginTop: '10px', color: '#333' }}>🛠️ Admin Paneli</h1>
 
-            <h1 style={{ textAlign: 'center', marginTop: '50px', color: '#333' }}>🛠️ Admin Paneli</h1>
-
-            <div className="admin-dashboard">
+            <div className="admin-dashboard" style={{ marginTop: '40px' }}>
                 <button className="admin-menu-btn" onClick={() => setActiveModal('user')}>
                     ➕ Yeni Öğrenci Ekle
                 </button>
