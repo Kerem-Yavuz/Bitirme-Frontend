@@ -36,12 +36,18 @@ const Login = () => {
             localStorage.setItem('token', data.data.accessToken);
             localStorage.setItem('user', JSON.stringify(data.data));
 
-            // Başarılı girişte anasayfaya yönlendiriyoruz
-            navigate('/anasayfa');
+            const userID = data.data.id;
+
+            // ADMİN KONTROLÜ (Sabit ID Mantığı)
+            // Eğer giriş yapan ID 1 ise admin paneline, değilse normal öğrenci anasayfasına
+            if (userID === 4) {
+                navigate('/admin-panel');
+            } else {
+                navigate('/anasayfa');
+            }
 
         } catch (err) {
             // Axios'ta hata mesajları err.response.data içinde döner
-            // Eğer back-end'den özel bir mesaj gelmezse varsayılan mesajı gösteririz
             const errorMessage = err.response?.data?.message || 'Giriş başarısız oldu, bilgilerinizi kontrol edin.';
             setError(errorMessage);
         }

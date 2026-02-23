@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom'; // useParams EKLENDİ
 import api from './api';
 import './App.css';
 
@@ -12,6 +12,9 @@ const SAAT_DILIMLERI = {
 
 function DersProgrami() {
     const navigate = useNavigate();
+    // URL'den gelen dönem numarasını yakalıyoruz (Örn: 1, 2, 3...)
+    const { semesterId } = useParams();
+
     const [dersler, setDersler] = useState([]);
     const [yukleniyor, setYukleniyor] = useState(true);
     const [hata, setHata] = useState('');
@@ -21,12 +24,22 @@ function DersProgrami() {
     const [seciliDersGruplari, setSeciliDersGruplari] = useState([]);
     const [gruplarYukleniyor, setGruplarYukleniyor] = useState(false);
 
+    // Dönem (semesterId) değiştiğinde dersleri yeniden filtreleyip getir
     useEffect(() => {
         const dersleriGetir = async () => {
+            setYukleniyor(true);
+            setHata('');
             try {
                 const response = await api.get('/lessons');
                 if (response.data && response.data.status) {
-                    setDersler(response.data.data);
+                    const tumDersler = response.data.data;
+
+                    // SADECE TIKLANAN DÖNEME AİT DERSLERİ FİLTRELE
+                    const filtrelenmisDersler = tumDersler.filter(
+                        (ders) => Number(ders.semesterNo) === Number(semesterId)
+                    );
+
+                    setDersler(filtrelenmisDersler);
                 }
                 setYukleniyor(false);
             } catch (error) {
@@ -36,7 +49,7 @@ function DersProgrami() {
             }
         };
         dersleriGetir();
-    }, []);
+    }, [semesterId]); // semesterId değiştiğinde useEffect tekrar çalışır
 
     const handleDersTikla = async (ders) => {
         setSeciliDers(ders);
@@ -104,12 +117,11 @@ function DersProgrami() {
         }
     };
 
-    // Modaldaki Grupları Filtreleme İşlemi (Daha önce seçilmiş olanlar ekranda çıkmaz)
+    // Modaldaki Grupları Filtreleme İşlemi
     let kayitliDersler = [];
     try { kayitliDersler = JSON.parse(localStorage.getItem('benimDerslerim') || '[]'); } catch (e) { }
     const kayitliIdler = kayitliDersler.map(d => d.lessonGroupID);
 
-    // Sadece henüz kayıt olunmamış grupları ekranda bırakıyoruz
     const gosterilecekGruplar = seciliDersGruplari.filter(grup => !kayitliIdler.includes(grup.lessonGroupID));
 
     if (yukleniyor) return <div className="ana-ekran merkez-ekran"><h2>Dersler Yükleniyor...</h2></div>;
@@ -117,7 +129,8 @@ function DersProgrami() {
 
     return (
         <div className="ana-ekran ders-secimi-ekrani">
-            <h2 className="ders-secimi-baslik">Açılan Dersler</h2>
+            {/* BAŞLIK DİNAMİK HALE GELDİ */}
+            <h2 className="ders-secimi-baslik">{semesterId ? `${semesterId}. Dönem Açılan Dersler` : 'Açılan Dersler'}</h2>
             <p className="ders-secimi-aciklama">Alt gruplarını ve gün/saat detaylarını görmek istediğiniz dersin üzerine tıklayın.</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', maxWidth: '1000px' }}>
@@ -140,9 +153,15 @@ function DersProgrami() {
                             <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#7f8c8d', fontWeight: 'bold' }}>{ders.semesterNo}. Dönem</p>
                         </div>
                     ))
-                ) : (<p style={{ color: '#888' }}>Sistemde kayıtlı ana ders bulunmuyor.</p>)}
+                ) : (
+                    // EĞER O DÖNEMDE DERS YOKSA ÇIKACAK MESAJ
+                    <p style={{ color: '#888', fontSize: '16px', marginTop: '20px' }}>
+                        Bu dönem için sistemde kayıtlı ders bulunmuyor.
+                    </p>
+                )}
             </div>
 
+            {/* MODAL KISMI AYNEN KORUNDU */}
             {modalAcik && (
                 <div className="modal-overlay" onClick={() => setModalAcik(false)}>
                     <div className="modal-icerik" style={{ width: '700px', maxWidth: '90%' }} onClick={e => e.stopPropagation()}>

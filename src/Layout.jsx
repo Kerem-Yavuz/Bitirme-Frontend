@@ -10,6 +10,11 @@ const Layout = () => {
     const [kullaniciAdi, setKullaniciAdi] = useState('');
     const [menuAcik, setMenuAcik] = useState(false);
 
+    // --- DERS SEÇİMİ ALT MENÜSÜ İÇİN STATE ---
+    const [dersMenuAcik, setDersMenuAcik] = useState(false);
+    // 8 Dönemi otomatik oluşturmak için dizi
+    const donemler = [1, 2, 3, 4, 5, 6, 7, 8];
+
     // Kullanıcı ismini çekme
     useEffect(() => {
         const user = localStorage.getItem('user');
@@ -42,13 +47,34 @@ const Layout = () => {
                     <span className="tooltip">Anasayfa</span>
                 </div>
 
+                {/* --- DERS SEÇİMİ ANA BUTONU --- */}
                 <div
-                    className={`menu-item ${location.pathname === '/ders-secimi' ? 'active' : ''}`}
-                    onClick={() => navigate('/ders-secimi')}
+                    // Eğer URL '/ders-secimi' ile başlıyorsa bu butonu hep aktif (renkli) tut
+                    className={`menu-item ${location.pathname.startsWith('/ders-secimi') ? 'active' : ''}`}
+                    onClick={() => setDersMenuAcik(!dersMenuAcik)}
                 >
                     <div className="icon">📚</div>
-                    <span className="tooltip">Ders Seçimi</span>
+                    <span className="tooltip">Ders Seçimi {dersMenuAcik ? '▼' : '▶'}</span>
                 </div>
+
+                {/* --- DERS SEÇİMİ ALT MENÜSÜ (1-8 DÖNEMLER) --- */}
+                {dersMenuAcik && (
+                    <div className="donemler-menu" style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '5px', alignItems: 'center' }}>
+                        {donemler.map((donem) => (
+                            <div
+                                key={donem}
+                                // Tıklanan dönem aktifse onu işaretle
+                                className={`menu-item ${location.pathname === `/ders-secimi/${donem}` ? 'active' : ''}`}
+                                onClick={() => navigate(`/ders-secimi/${donem}`)}
+                                // Alt menü olduğunu belli etmek için biraz küçültüyoruz
+                                style={{ transform: 'scale(0.85)', margin: '0' }}
+                            >
+                                <div className="icon" style={{ fontWeight: 'bold' }}>{donem}</div>
+                                <span className="tooltip">{donem}. Dönem</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* SAĞ İÇERİK ALANI */}
