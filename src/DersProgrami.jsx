@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom'; // useParams EKLENDİ
+import { useNavigate, useParams } from 'react-router-dom';
 import api from './api';
 import './App.css';
 
@@ -12,7 +12,6 @@ const SAAT_DILIMLERI = {
 
 function DersProgrami() {
     const navigate = useNavigate();
-    // URL'den gelen dönem numarasını yakalıyoruz (Örn: 1, 2, 3...)
     const { semesterId } = useParams();
 
     const [dersler, setDersler] = useState([]);
@@ -24,7 +23,27 @@ function DersProgrami() {
     const [seciliDersGruplari, setSeciliDersGruplari] = useState([]);
     const [gruplarYukleniyor, setGruplarYukleniyor] = useState(false);
 
-    // Dönem (semesterId) değiştiğinde dersleri yeniden filtreleyip getir
+    // EKRANIN ANINDA TEPKİ VERMESİ İÇİN KAYITLI DERSLERİ STATE'TE TUTUYORUZ
+    const [kayitliDersler, setKayitliDersler] = useState([]);
+
+    // --- ZAMAN MANTIĞI VE DÖNEM BELİRLEME ---
+    const currentMonth = new Date().getMonth() + 1;
+    const isSpring = currentMonth >= 2 && currentMonth <= 6;
+    const availableSemesters = isSpring ? [2, 4, 6, 8] : [1, 3, 5, 7];
+
+    // Sayfa ilk açıldığında LocalStorage'dan mevcut dersleri çek
+    useEffect(() => {
+        try {
+            const ls = JSON.parse(localStorage.getItem('benimDerslerim') || '[]');
+            if (ls.length > 0 && typeof ls[0] === 'object') {
+                setKayitliDersler(ls);
+            } else if (ls.length > 0 && typeof ls[0] === 'number') {
+                // Eski bozuk format kalmışsa temizle
+                localStorage.removeItem('benimDerslerim');
+            }
+        } catch (e) { }
+    }, []);
+
     useEffect(() => {
         const dersleriGetir = async () => {
             setYukleniyor(true);
@@ -33,12 +52,9 @@ function DersProgrami() {
                 const response = await api.get('/lessons');
                 if (response.data && response.data.status) {
                     const tumDersler = response.data.data;
-
-                    // SADECE TIKLANAN DÖNEME AİT DERSLERİ FİLTRELE
                     const filtrelenmisDersler = tumDersler.filter(
                         (ders) => Number(ders.semesterNo) === Number(semesterId)
                     );
-
                     setDersler(filtrelenmisDersler);
                 }
                 setYukleniyor(false);
@@ -49,7 +65,7 @@ function DersProgrami() {
             }
         };
         dersleriGetir();
-    }, [semesterId]); // semesterId değiştiğinde useEffect tekrar çalışır
+    }, [semesterId]);
 
     const handleDersTikla = async (ders) => {
         setSeciliDers(ders);
@@ -71,45 +87,42 @@ function DersProgrami() {
 
     const derseKayitOl = async (grup) => {
         try {
-            // Hileli hafızamızı çekiyoruz
-            let benimDerslerim = JSON.parse(localStorage.getItem('benimDerslerim') || '[]');
-
-            // Eğer eski formatta (sadece sayı ID) kaldıysa temizleyip yeni formata geçelim
-            if (benimDerslerim.length > 0 && typeof benimDerslerim[0] === 'number') {
-                benimDerslerim = [];
-                localStorage.removeItem('benimDerslerim');
-            }
-
-            // Gruptan "Tek Grup", "Grup 1" gibi temel adı koparıyoruz
+            let guncelDersler = [...kayitliDersler];
             const temelGrupAdi = grup.lessonGroupName.split(' (')[0];
 
-            // AYNI DERSİN BAŞKA BİR GRUBU SEÇİLMİŞ Mİ KONTROLÜ
-            const baskaGrupVarMi = benimDerslerim.find(
+            // 1. AYNI DERSİN BAŞKA BİR GRUBU VAR MI KONTROLÜ
+            const baskaGrupVarMi = guncelDersler.find(
                 d => d.lessonID === seciliDers.lessonID && d.temelGrupAdi !== temelGrupAdi
             );
 
             if (baskaGrupVarMi) {
-                alert(`HATA: Bu dersin zaten "${baskaGrupVarMi.temelGrupAdi}" isimli şubesine kayıtlısınız! Başka grup seçemezsiniz.`);
-                return;
+                // KULLANICIYA GRUP DEĞİŞTİRME ONAYI SOR
+                const onay = window.confirm(`Şu anda bu dersin "${baskaGrupVarMi.temelGrupAdi}" şubesine kayıtlısınız. "${temelGrupAdi}" grubuna geçmek istiyor musunuz?\n\n(Eski grubun saatleri programınızdan silinecektir.)`);
+
+                if (!onay) return; // İptal derse işlemi durdur
+
+                // Onayladıysa, eski grubun tüm saatlerini listeden (frontend'den) temizle
+                guncelDersler = guncelDersler.filter(d => !(d.lessonID === seciliDers.lessonID && d.temelGrupAdi === baskaGrupVarMi.temelGrupAdi));
+
+                // NOT: Eğer backend'inizde dersten çıkış (unregister) API'si varsa buraya onu çağıran bir kod eklemelisin.
+                // Örn: await api.post('/lessonGroups/unregister', { lessonID: seciliDers.lessonID });
             }
 
+            // 2. YENİ GRUBUN SAATİNİ KAYDET
             const response = await api.post('/lessonGroups/register', {
                 lessonGroupID: grup.lessonGroupID
             });
 
             if (response.data && response.data.status) {
-                // Sadece ID değil, dersin kime ait olduğunu da kaydediyoruz
-                benimDerslerim.push({
+                guncelDersler.push({
                     lessonGroupID: grup.lessonGroupID,
                     lessonID: seciliDers.lessonID,
                     temelGrupAdi: temelGrupAdi
                 });
-                localStorage.setItem('benimDerslerim', JSON.stringify(benimDerslerim));
 
-                alert("Saati başarıyla seçtiniz! Kalan saatleri de seçebilirsiniz.");
-
-                // Seçilen saati ekrandan anında yok etmek için modal listesinden çıkarıyoruz
-                setSeciliDersGruplari(prev => prev.filter(g => g.lessonGroupID !== grup.lessonGroupID));
+                // Hem State'i hem LocalStorage'ı güncelle (Ekran anında değişsin diye)
+                localStorage.setItem('benimDerslerim', JSON.stringify(guncelDersler));
+                setKayitliDersler(guncelDersler);
             }
         } catch (error) {
             const mesaj = error.response?.data?.message || "Kayıt olurken bir hata oluştu veya zaten kayıtlısınız.";
@@ -117,20 +130,30 @@ function DersProgrami() {
         }
     };
 
-    // Modaldaki Grupları Filtreleme İşlemi
-    let kayitliDersler = [];
-    try { kayitliDersler = JSON.parse(localStorage.getItem('benimDerslerim') || '[]'); } catch (e) { }
     const kayitliIdler = kayitliDersler.map(d => d.lessonGroupID);
-
-    const gosterilecekGruplar = seciliDersGruplari.filter(grup => !kayitliIdler.includes(grup.lessonGroupID));
 
     if (yukleniyor) return <div className="ana-ekran merkez-ekran"><h2>Dersler Yükleniyor...</h2></div>;
     if (hata) return <div className="ana-ekran merkez-ekran hata-mesaji"><h2>{hata}</h2></div>;
 
     return (
-        <div className="ana-ekran ders-secimi-ekrani">
-            {/* BAŞLIK DİNAMİK HALE GELDİ */}
-            <h2 className="ders-secimi-baslik">{semesterId ? `${semesterId}. Dönem Açılan Dersler` : 'Açılan Dersler'}</h2>
+        <div className="ana-ekran ders-secimi-ekrani" style={{ position: 'relative' }}>
+
+            {/* YATAY DÖNEM MENÜSÜ */}
+            <div className="yatay-donem-menusu">
+                {availableSemesters.map(donem => (
+                    <button
+                        key={donem}
+                        className={`donem-btn ${Number(semesterId) === donem ? 'aktif' : ''}`}
+                        onClick={() => navigate(`/ders-secimi/${donem}`)}
+                    >
+                        {donem}. Dönem
+                    </button>
+                ))}
+            </div>
+
+            <h2 className="ders-secimi-baslik" style={{ marginTop: '70px' }}>
+                {semesterId ? `${semesterId}. Dönem Açılan Dersler` : 'Açılan Dersler'}
+            </h2>
             <p className="ders-secimi-aciklama">Alt gruplarını ve gün/saat detaylarını görmek istediğiniz dersin üzerine tıklayın.</p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', maxWidth: '1000px' }}>
@@ -154,14 +177,13 @@ function DersProgrami() {
                         </div>
                     ))
                 ) : (
-                    // EĞER O DÖNEMDE DERS YOKSA ÇIKACAK MESAJ
                     <p style={{ color: '#888', fontSize: '16px', marginTop: '20px' }}>
                         Bu dönem için sistemde kayıtlı ders bulunmuyor.
                     </p>
                 )}
             </div>
 
-            {/* MODAL KISMI AYNEN KORUNDU */}
+            {/* DERS SEÇİM MODALI */}
             {modalAcik && (
                 <div className="modal-overlay" onClick={() => setModalAcik(false)}>
                     <div className="modal-icerik" style={{ width: '700px', maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
@@ -170,7 +192,7 @@ function DersProgrami() {
                         </h3>
 
                         {gruplarYukleniyor ? (<p style={{ padding: '20px 0' }}>Gruplar aranıyor...</p>
-                        ) : gosterilecekGruplar.length > 0 ? (
+                        ) : seciliDersGruplari.length > 0 ? (
                             <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                 <table className="ders-tablosu" style={{ marginTop: '15px', width: '100%' }}>
                                     <thead>
@@ -178,28 +200,45 @@ function DersProgrami() {
                                             <th className="baslik-hucre">Grup Adı</th>
                                             <th className="baslik-hucre">Gün</th>
                                             <th className="baslik-hucre">Saat</th>
-                                            <th className="baslik-hucre">İşlem</th>
+                                            <th className="baslik-hucre" style={{ textAlign: 'center' }}>İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {gosterilecekGruplar.map(grup => (
-                                            <tr key={grup.lessonGroupID}>
-                                                <td style={{ fontWeight: 'bold', padding: '10px' }}>{grup.lessonGroupName}</td>
-                                                <td style={{ padding: '10px' }}>{grup.day !== null ? GUNLER[grup.day] : '-'}</td>
-                                                <td style={{ padding: '10px' }}>{grup.hour ? SAAT_DILIMLERI[grup.hour] : '-'}</td>
-                                                <td style={{ padding: '10px' }}>
-                                                    <button className="btn-kayit-ol" onClick={() => derseKayitOl(grup)}>
-                                                        Seç ve Kaydol
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {seciliDersGruplari.map(grup => {
+                                            // BU SATIR (SAAT) SEÇİLMİŞ Mİ KONTROLÜ
+                                            const isSelected = kayitliIdler.includes(grup.lessonGroupID);
+
+                                            return (
+                                                <tr key={grup.lessonGroupID} style={{
+                                                    backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
+                                                    transition: 'background-color 0.3s'
+                                                }}>
+                                                    <td style={{ fontWeight: 'bold', padding: '10px' }}>{grup.lessonGroupName}</td>
+                                                    <td style={{ padding: '10px' }}>{grup.day !== null ? GUNLER[grup.day] : '-'}</td>
+                                                    <td style={{ padding: '10px' }}>{grup.hour ? SAAT_DILIMLERI[grup.hour] : '-'}</td>
+                                                    <td style={{ padding: '10px', textAlign: 'center' }}>
+
+                                                        {/* SEÇİLDİYSE YAZI, SEÇİLMEDİYSE BUTON GÖSTER */}
+                                                        {isSelected ? (
+                                                            <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '14px' }}>
+                                                                ✓ Seçildi
+                                                            </span>
+                                                        ) : (
+                                                            <button className="btn-kayit-ol" onClick={() => derseKayitOl(grup)}>
+                                                                Seç ve Kaydol
+                                                            </button>
+                                                        )}
+
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
                         ) : (
-                            <p style={{ color: '#27ae60', margin: '30px 0', fontWeight: 'bold' }}>
-                                ✓ Bu derse ait tüm uygun saatleri seçtiniz veya boş kontenjan kalmadı.
+                            <p style={{ color: '#e74c3c', margin: '30px 0', fontWeight: 'bold' }}>
+                                Bu ders için henüz tanımlanmış bir grup/saat bulunmuyor.
                             </p>
                         )}
 

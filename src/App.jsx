@@ -19,7 +19,6 @@ function App() {
           <Route path="/ders-secimi/:semesterId" element={<DersProgrami />} />
           <Route path="/profil" element={<Profile />} />
 
-          //* Admin panelini tekrar Layout'un içine aldık
           <Route path="/admin-panel" element={<AdminPanel />} />
         </Route>
 

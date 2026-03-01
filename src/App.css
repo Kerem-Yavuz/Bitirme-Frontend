@@ -963,3 +963,42 @@ th {
   background-color: #c82333;
   transform: scale(1.05);
 }
+
+/* --- YENİ YATAY DÖNEM MENÜSÜ TASARIMI --- */
+.yatay-donem-menusu {
+  position: absolute;
+  top: 20px;
+  /* Profil kutusuyla aynı yükseklik */
+  left: 20px;
+  /* Sol tarafa hizalama */
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.donem-btn {
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.donem-btn:hover {
+  background-color: #34495e;
+  transform: translateY(-2px);
+}
+
+/* Aktif (Seçili) Olan Dönemin Tasarımı */
+.donem-btn.aktif {
+  background-color: #3498db;
+  /* Mavi vurgu rengi */
+  color: white;
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4);
+  transform: translateY(-2px) scale(1.05);
+}

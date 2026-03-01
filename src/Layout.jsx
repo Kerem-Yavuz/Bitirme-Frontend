@@ -9,8 +9,6 @@ const Layout = () => {
     const [kullaniciAdi, setKullaniciAdi] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
     const [menuAcik, setMenuAcik] = useState(false);
-    const [dersMenuAcik, setDersMenuAcik] = useState(false);
-    const donemler = [1, 2, 3, 4, 5, 6, 7, 8];
 
     // Kullanıcı ismini ve Yetkisini çekme
     useEffect(() => {
@@ -36,6 +34,11 @@ const Layout = () => {
         localStorage.removeItem('token');
         navigate('/');
     };
+
+    const currentMonth = new Date().getMonth() + 1;
+    // Şubat (2) ile Haziran (6) arası Çift Dönemler
+    const isSpring = currentMonth >= 2 && currentMonth <= 6;
+    const defaultSemester = isSpring ? 2 : 1;
 
     return (
         <div className="layout-container">
@@ -64,29 +67,14 @@ const Layout = () => {
                 ) : (
                     /* SADECE ÖĞRENCİLERİN GÖRECEĞİ BUTON VE ALT MENÜSÜ */
                     <>
+
                         <div
                             className={`menu-item ${location.pathname.startsWith('/ders-secimi') ? 'active' : ''}`}
-                            onClick={() => setDersMenuAcik(!dersMenuAcik)}
+                            onClick={() => navigate(`/ders-secimi/${defaultSemester}`)}
                         >
                             <div className="icon">📚</div>
-                            <span className="tooltip">Ders Seçimi {dersMenuAcik ? '▼' : '▶'}</span>
+                            <span className="tooltip">Ders Seçimi</span>
                         </div>
-
-                        {dersMenuAcik && (
-                            <div className="donemler-menu" style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '5px', alignItems: 'center' }}>
-                                {donemler.map((donem) => (
-                                    <div
-                                        key={donem}
-                                        className={`menu-item ${location.pathname === `/ders-secimi/${donem}` ? 'active' : ''}`}
-                                        onClick={() => navigate(`/ders-secimi/${donem}`)}
-                                        style={{ transform: 'scale(0.85)', margin: '0' }}
-                                    >
-                                        <div className="icon" style={{ fontWeight: 'bold' }}>{donem}</div>
-                                        <span className="tooltip">{donem}. Dönem</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </>
                 )}
             </div>

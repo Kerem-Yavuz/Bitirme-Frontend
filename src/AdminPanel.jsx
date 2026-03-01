@@ -56,7 +56,6 @@ const AdminPanel = () => {
     };
 
     return (
-        // Sayfanın geri kalanını güzelce kaplaması için kapsayıcıyı sadeleştirdik
         <div style={{ width: '100%', padding: '20px', boxSizing: 'border-box' }}>
 
             <h1 style={{ textAlign: 'center', marginTop: '10px', color: '#333' }}>🛠️ Admin Paneli</h1>
