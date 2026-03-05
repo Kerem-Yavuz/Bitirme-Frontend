@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from './api';
+import { ClockIcon } from './icons';
 import './App.css';
 
-const GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
-const SAAT_DILIMLERI = {
-    "00:00:00": "09.00-10.00", "01:00:00": "10.00-11.00", "02:00:00": "11.00-12.00",
-    "03:00:00": "12.00-13.00", "04:00:00": "13.00-14.00", "05:00:00": "14.00-15.00",
-    "06:00:00": "15.00-16.00", "07:00:00": "16.00-17.00"
-};
+const GUNLER = ["", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+
+function formatHour(hourStr) {
+    if (!hourStr) return '-';
+    const parts = hourStr.split(':');
+    const h = parseInt(parts[0]);
+    return `${String(h).padStart(2, '0')}:00-${String(h + 1).padStart(2, '0')}:00`;
+}
 
 function DersProgrami() {
     const navigate = useNavigate();
@@ -23,25 +26,24 @@ function DersProgrami() {
     const [seciliDersGruplari, setSeciliDersGruplari] = useState([]);
     const [gruplarYukleniyor, setGruplarYukleniyor] = useState(false);
 
-    // EKRANIN ANINDA TEPKİ VERMESİ İÇİN KAYITLI DERSLERİ STATE'TE TUTUYORUZ
     const [kayitliDersler, setKayitliDersler] = useState([]);
 
-    // --- ZAMAN MANTIĞI VE DÖNEM BELİRLEME ---
     const currentMonth = new Date().getMonth() + 1;
     const isSpring = currentMonth >= 2 && currentMonth <= 6;
     const availableSemesters = isSpring ? [2, 4, 6, 8] : [1, 3, 5, 7];
 
-    // Sayfa ilk açıldığında LocalStorage'dan mevcut dersleri çek
     useEffect(() => {
-        try {
-            const ls = JSON.parse(localStorage.getItem('benimDerslerim') || '[]');
-            if (ls.length > 0 && typeof ls[0] === 'object') {
-                setKayitliDersler(ls);
-            } else if (ls.length > 0 && typeof ls[0] === 'number') {
-                // Eski bozuk format kalmışsa temizle
-                localStorage.removeItem('benimDerslerim');
+        const kayitlilariGetir = async () => {
+            try {
+                const res = await api.get('/lessonGroups/my');
+                if (res.data && res.data.status) {
+                    setKayitliDersler(res.data.data || []);
+                }
+            } catch (err) {
+                console.error('Kayıtlı dersler çekilemedi:', err);
             }
-        } catch (e) { }
+        };
+        kayitlilariGetir();
     }, []);
 
     useEffect(() => {
@@ -87,42 +89,15 @@ function DersProgrami() {
 
     const derseKayitOl = async (grup) => {
         try {
-            let guncelDersler = [...kayitliDersler];
-            const temelGrupAdi = grup.lessonGroupName.split(' (')[0];
-
-            // 1. AYNI DERSİN BAŞKA BİR GRUBU VAR MI KONTROLÜ
-            const baskaGrupVarMi = guncelDersler.find(
-                d => d.lessonID === seciliDers.lessonID && d.temelGrupAdi !== temelGrupAdi
-            );
-
-            if (baskaGrupVarMi) {
-                // KULLANICIYA GRUP DEĞİŞTİRME ONAYI SOR
-                const onay = window.confirm(`Şu anda bu dersin "${baskaGrupVarMi.temelGrupAdi}" şubesine kayıtlısınız. "${temelGrupAdi}" grubuna geçmek istiyor musunuz?\n\n(Eski grubun saatleri programınızdan silinecektir.)`);
-
-                if (!onay) return; // İptal derse işlemi durdur
-
-                // Onayladıysa, eski grubun tüm saatlerini listeden (frontend'den) temizle
-                guncelDersler = guncelDersler.filter(d => !(d.lessonID === seciliDers.lessonID && d.temelGrupAdi === baskaGrupVarMi.temelGrupAdi));
-
-                // NOT: Eğer backend'inizde dersten çıkış (unregister) API'si varsa buraya onu çağıran bir kod eklemelisin.
-                // Örn: await api.post('/lessonGroups/unregister', { lessonID: seciliDers.lessonID });
-            }
-
-            // 2. YENİ GRUBUN SAATİNİ KAYDET
             const response = await api.post('/lessonGroups/register', {
                 lessonGroupID: grup.lessonGroupID
             });
 
             if (response.data && response.data.status) {
-                guncelDersler.push({
-                    lessonGroupID: grup.lessonGroupID,
-                    lessonID: seciliDers.lessonID,
-                    temelGrupAdi: temelGrupAdi
-                });
-
-                // Hem State'i hem LocalStorage'ı güncelle (Ekran anında değişsin diye)
-                localStorage.setItem('benimDerslerim', JSON.stringify(guncelDersler));
-                setKayitliDersler(guncelDersler);
+                const res = await api.get('/lessonGroups/my');
+                if (res.data && res.data.status) {
+                    setKayitliDersler(res.data.data || []);
+                }
             }
         } catch (error) {
             const mesaj = error.response?.data?.message || "Kayıt olurken bir hata oluştu veya zaten kayıtlısınız.";
@@ -186,39 +161,53 @@ function DersProgrami() {
             {/* DERS SEÇİM MODALI */}
             {modalAcik && (
                 <div className="modal-overlay" onClick={() => setModalAcik(false)}>
-                    <div className="modal-icerik" style={{ width: '700px', maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
+                    <div className="modal-icerik" style={{ width: '750px', maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
                         <h3 style={{ marginTop: '0', color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>
-                            {seciliDers?.lessonName} - Grup Seçimi
+                            {seciliDers?.lessonName} — Grup Seçimi
                         </h3>
 
                         {gruplarYukleniyor ? (<p style={{ padding: '20px 0' }}>Gruplar aranıyor...</p>
                         ) : seciliDersGruplari.length > 0 ? (
                             <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                <table className="ders-tablosu" style={{ marginTop: '15px', width: '100%' }}>
+                                <table className="modern-table" style={{ marginTop: '15px', width: '100%' }}>
                                     <thead>
                                         <tr>
-                                            <th className="baslik-hucre">Grup Adı</th>
-                                            <th className="baslik-hucre">Gün</th>
-                                            <th className="baslik-hucre">Saat</th>
-                                            <th className="baslik-hucre" style={{ textAlign: 'center' }}>İşlem</th>
+                                            <th>Grup Adı</th>
+                                            <th>Kontenjan</th>
+                                            <th>Saatler</th>
+                                            <th style={{ textAlign: 'center' }}>İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {seciliDersGruplari.map(grup => {
-                                            // BU SATIR (SAAT) SEÇİLMİŞ Mİ KONTROLÜ
                                             const isSelected = kayitliIdler.includes(grup.lessonGroupID);
+                                            const hours = grup.hours || [];
 
                                             return (
                                                 <tr key={grup.lessonGroupID} style={{
                                                     backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
                                                     transition: 'background-color 0.3s'
                                                 }}>
-                                                    <td style={{ fontWeight: 'bold', padding: '10px' }}>{grup.lessonGroupName}</td>
-                                                    <td style={{ padding: '10px' }}>{grup.day !== null ? GUNLER[grup.day] : '-'}</td>
-                                                    <td style={{ padding: '10px' }}>{grup.hour ? SAAT_DILIMLERI[grup.hour] : '-'}</td>
-                                                    <td style={{ padding: '10px', textAlign: 'center' }}>
-
-                                                        {/* SEÇİLDİYSE YAZI, SEÇİLMEDİYSE BUTON GÖSTER */}
+                                                    <td style={{ fontWeight: 'bold' }}>{grup.lessonGroupName}</td>
+                                                    <td style={{ textAlign: 'center' }}>{grup.maxNumber || '-'}</td>
+                                                    <td>
+                                                        {hours.length > 0 ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                {hours.map((h, idx) => (
+                                                                    <span key={idx} style={{
+                                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                        fontSize: '12px', backgroundColor: '#f1f3f5',
+                                                                        padding: '3px 8px', borderRadius: '4px', color: '#495057'
+                                                                    }}>
+                                                                        <ClockIcon size={12} color="#868e96" />
+                                                                        {GUNLER[h.day] || '?'} {formatHour(h.hour)}
+                                                                        {h.room && <span style={{ color: '#868e96' }}>({h.room})</span>}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
                                                         {isSelected ? (
                                                             <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '14px' }}>
                                                                 ✓ Seçildi
@@ -228,7 +217,6 @@ function DersProgrami() {
                                                                 Seç ve Kaydol
                                                             </button>
                                                         )}
-
                                                     </td>
                                                 </tr>
                                             );

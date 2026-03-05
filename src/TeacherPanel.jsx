@@ -1,27 +1,25 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UsersIcon, BookIcon, BuildingIcon } from './icons';
+import { BookIcon, UsersIcon } from './icons';
 import './App.css';
 
-const adminCards = [
-    { title: 'Kullanıcı Yönetimi', icon: UsersIcon, desc: 'Öğrenci ve yöneticileri listele, ekle', path: '/admin-panel/users', color: '#3498db' },
-    { title: 'Ders Yönetimi', icon: BookIcon, desc: 'Dersleri ve ders gruplarını yönet', path: '/admin-panel/lessons', color: '#27ae60' },
-    { title: 'Bölüm Yönetimi', icon: BuildingIcon, desc: 'Bölümleri listele, ekle, düzenle, sil', path: '/admin-panel/departments', color: '#8f2b3a' },
+const teacherCards = [
+    { title: 'Derslerim', icon: BookIcon, desc: 'Atanmış derslerinizi ve saatlerini görüntüleyin', path: '/teacher-panel/lessons', color: '#27ae60' },
 ];
 
-const AdminPanel = () => {
+const TeacherPanel = () => {
     const navigate = useNavigate();
 
     return (
         <div style={{ width: '100%', padding: '40px', boxSizing: 'border-box', overflowY: 'auto', height: '100%' }}>
-            <h1 style={{ textAlign: 'center', color: '#2c3e50', marginBottom: '10px' }}>Admin Paneli</h1>
-            <p style={{ textAlign: 'center', color: '#7f8c8d', marginBottom: '40px' }}>Yönetim modülünü seçin</p>
+            <h1 style={{ textAlign: 'center', color: '#2c3e50', marginBottom: '10px' }}>Öğretmen Paneli</h1>
+            <p style={{ textAlign: 'center', color: '#7f8c8d', marginBottom: '40px' }}>Derslerinizi ve öğrenci listelerinizi görüntüleyin</p>
 
             <div style={{
                 display: 'flex', flexWrap: 'wrap', gap: '24px',
                 justifyContent: 'center', maxWidth: '900px', margin: '0 auto'
             }}>
-                {adminCards.map((card, i) => {
+                {teacherCards.map((card, i) => {
                     const IconComponent = card.icon;
                     return (
                         <div
@@ -60,4 +58,4 @@ const AdminPanel = () => {
     );
 };
 
-export default AdminPanel;
+export default TeacherPanel;

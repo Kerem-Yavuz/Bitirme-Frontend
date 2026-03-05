@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import api from './api';
+import { HomeIcon, SettingsIcon, BookIcon, UserIcon, LogOutIcon, GraduationCapIcon } from './icons';
 import './App.css';
 
 const Layout = () => {
@@ -7,36 +9,38 @@ const Layout = () => {
     const location = useLocation();
 
     const [kullaniciAdi, setKullaniciAdi] = useState('');
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [privileges, setPrivileges] = useState([]);
     const [menuAcik, setMenuAcik] = useState(false);
 
-    // Kullanıcı ismini ve Yetkisini çekme
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (userStr) {
             const userObj = JSON.parse(userStr);
             setKullaniciAdi(userObj.fullName);
-
-            // --- GERÇEK VE DİNAMİK ADMİN KONTROLÜ ---
-            // Backend'den gelen privileges dizisinde 'Admin' var mı kontrolü yapıyoruz
-            if (userObj.privileges && userObj.privileges.includes('Admin')) {
-                setIsAdmin(true);
-            }
+            setPrivileges(userObj.privileges || []);
         }
     }, []);
+
+    const isAdmin = privileges.includes('Admin');
+    const isTeacher = privileges.includes('Teacher');
+    const isStudent = privileges.includes('Student');
 
     const toggleMenu = () => {
         setMenuAcik(!menuAcik);
     };
 
-    const cikisYap = () => {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        navigate('/');
+    const cikisYap = async () => {
+        try {
+            await api.post('/users/logout');
+        } catch (err) {
+            console.error('Çıkış hatası:', err);
+        } finally {
+            localStorage.removeItem('user');
+            navigate('/');
+        }
     };
 
     const currentMonth = new Date().getMonth() + 1;
-    // Şubat (2) ile Haziran (6) arası Çift Dönemler
     const isSpring = currentMonth >= 2 && currentMonth <= 6;
     const defaultSemester = isSpring ? 2 : 1;
 
@@ -44,38 +48,47 @@ const Layout = () => {
         <div className="layout-container">
             {/* SOL GLOBAL MENÜ */}
             <div className="sidebar-menu">
-                {/* ... Anasayfa, Admin Paneli ve Ders Seçimi link kısımları tamamen aynı kalacak ... */}
 
-                {/* Herkes İçin Anasayfa */}
+                {/* Anasayfa — herkes görür */}
                 <div
                     className={`menu-item ${location.pathname === '/anasayfa' ? 'active' : ''}`}
                     onClick={() => navigate('/anasayfa')}
                 >
-                    <div className="icon">🏠</div>
+                    <div className="icon"><HomeIcon size={22} color="white" /></div>
                     <span className="tooltip">Anasayfa</span>
                 </div>
 
-                {isAdmin ? (
-                    /* SADECE ADMİNLERİN GÖRECEĞİ BUTON */
+                {/* Student paneli */}
+                {isStudent && (
+                    <div
+                        className={`menu-item ${location.pathname.startsWith('/ders-secimi') ? 'active' : ''}`}
+                        onClick={() => navigate(`/ders-secimi/${defaultSemester}`)}
+                    >
+                        <div className="icon"><BookIcon size={22} color="white" /></div>
+                        <span className="tooltip">Ders Seçimi</span>
+                    </div>
+                )}
+
+                {/* Teacher paneli */}
+                {isTeacher && (
+                    <div
+                        className={`menu-item ${location.pathname.startsWith('/teacher-panel') ? 'active' : ''}`}
+                        onClick={() => navigate('/teacher-panel')}
+                    >
+                        <div className="icon"><GraduationCapIcon size={22} color="white" /></div>
+                        <span className="tooltip">Öğretmen Paneli</span>
+                    </div>
+                )}
+
+                {/* Admin paneli */}
+                {isAdmin && (
                     <div
                         className={`menu-item ${location.pathname.startsWith('/admin-panel') ? 'active' : ''}`}
                         onClick={() => navigate('/admin-panel')}
                     >
-                        <div className="icon">🛠️</div>
+                        <div className="icon"><SettingsIcon size={22} color="white" /></div>
                         <span className="tooltip">Admin Paneli</span>
                     </div>
-                ) : (
-                    /* SADECE ÖĞRENCİLERİN GÖRECEĞİ BUTON VE ALT MENÜSÜ */
-                    <>
-
-                        <div
-                            className={`menu-item ${location.pathname.startsWith('/ders-secimi') ? 'active' : ''}`}
-                            onClick={() => navigate(`/ders-secimi/${defaultSemester}`)}
-                        >
-                            <div className="icon">📚</div>
-                            <span className="tooltip">Ders Seçimi</span>
-                        </div>
-                    </>
                 )}
             </div>
 
@@ -89,19 +102,18 @@ const Layout = () => {
                     </div>
                     <div className="user-info">
                         <span className="user-name">{kullaniciAdi}</span>
-                        {/* Yetkiye göre "Admin" veya "Öğrenci" yazdırıyoruz */}
                         <span className="user-role" style={{ fontSize: '10px' }}>
-                            {isAdmin ? 'Admin ▼' : 'Öğrenci ▼'}
+                            {privileges.join(', ') || 'Kullanıcı'} ▼
                         </span>
                     </div>
 
                     {/* Açılır Menü */}
                     <div className="dropdown-menu" style={{ display: menuAcik ? 'block' : 'none' }}>
                         <button onClick={(e) => { e.stopPropagation(); navigate('/profil'); }} className="dropdown-item">
-                            👤 Profilim
+                            <UserIcon size={16} /> Profilim
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); cikisYap(); }} className="dropdown-item" style={{ color: '#dc3545' }}>
-                            🚪 Çıkış Yap
+                            <LogOutIcon size={16} /> Çıkış Yap
                         </button>
                     </div>
                 </div>

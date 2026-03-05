@@ -2,15 +2,34 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import api from './api';
+import { DownloadIcon } from './icons';
 import './App.css';
 
 const GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
-const SAATLER = ["09.00-10.00", "10.00-11.00", "11.00-12.00", "12.00-13.00", "13.00-14.00", "14.00-15.00", "15.00-16.00", "16.00-17.00"];
+const SAATLER = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
 
-const SAAT_INDEXLERI = {
-    "00:00:00": 0, "01:00:00": 1, "02:00:00": 2, "03:00:00": 3,
-    "04:00:00": 4, "05:00:00": 5, "06:00:00": 6, "07:00:00": 7
-};
+// Saat string'inden (HH:MM:SS veya HH:MM) satır indexi hesapla
+function saatToRowIndex(hourStr) {
+    if (!hourStr) return -1;
+    const parts = hourStr.split(':');
+    const saat = parseInt(parts[0]);
+    return saat - 9; // 09:00 = index 0, 10:00 = index 1, ...
+}
+
+// Ders adına göre tutarlı renk üretme
+const RENK_PALETI = [
+    '#2980b9', '#8e44ad', '#16a085', '#d35400', '#c0392b',
+    '#2c3e50', '#27ae60', '#e67e22', '#1abc9c', '#9b59b6',
+    '#34495e', '#e74c3c', '#3498db', '#f39c12', '#2ecc71'
+];
+
+function stringToColorIndex(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % RENK_PALETI.length;
+}
 
 function Anasayfa() {
     const [yerlesim, setYerlesim] = useState({});
@@ -30,52 +49,32 @@ function Anasayfa() {
 
         const programiGetir = async () => {
             try {
-                // Hem dersleri hem grupları aynı anda backend'den istiyoruz
-                const [lessonsResponse, groupsResponse] = await Promise.all([
-                    api.get('/lessons'),
-                    api.get('/lessonGroups')
-                ]);
-
-                const tumDersler = lessonsResponse.data?.data || [];
-                const tumDersGruplari = groupsResponse.data?.data || [];
-
-                // Ders ID'lerine göre isimleri bulabileceğimiz bir sözlük oluşturuyoruz
-                const dersIsimleriMap = {};
-                tumDersler.forEach(ders => {
-                    dersIsimleriMap[ders.lessonID] = ders.lessonName;
-                });
-
-                let benimDerslerim = [];
-                try { benimDerslerim = JSON.parse(localStorage.getItem('benimDerslerim') || '[]'); } catch (e) { }
-
-                // Eğer eski düzende kaldıysa patlamasın diye
-                if (benimDerslerim.length > 0 && typeof benimDerslerim[0] === 'number') {
-                    benimDerslerim = [];
-                }
-
-                // Sadece benim seçtiğim grupları filtrele
-                const benimIdlerim = benimDerslerim.map(d => d.lessonGroupID);
-                const dersGruplari = tumDersGruplari.filter(grup => benimIdlerim.includes(grup.lessonGroupID));
+                const myGroupsRes = await api.get('/lessonGroups/my');
+                const dersGruplari = myGroupsRes.data?.data || [];
 
                 const yeniYerlesim = {};
 
                 dersGruplari.forEach((grup) => {
-                    if (grup.day !== null && grup.day !== undefined && grup.hour !== null) {
-                        const colIndex = parseInt(grup.day);
-                        const rowIndex = SAAT_INDEXLERI[grup.hour];
+                    const hours = grup.hours || [];
+                    const anaDersAdi = grup.lessonName || "Bilinmeyen Ders";
+                    const kisaGrupAdi = grup.lessonGroupName.split(' (')[0];
+                    const renkIndex = stringToColorIndex(anaDersAdi);
 
-                        if (colIndex >= 0 && rowIndex >= 0) {
-                            const anaDersAdi = dersIsimleriMap[grup.lessonID] || "Bilinmeyen Ders";
-                            const kisaGrupAdi = grup.lessonGroupName.split(' (')[0];
+                    hours.forEach((h) => {
+                        if (h.day !== null && h.day !== undefined && h.hour !== null) {
+                            const colIndex = h.day - 1; // day 1-7 → col 0-6
+                            const rowIndex = saatToRowIndex(h.hour);
 
-                            yeniYerlesim[`${colIndex}-${rowIndex}`] = {
-                                ad: anaDersAdi,         // Örn: MAT 222 - Diferansiyel...
-                                grupAdi: kisaGrupAdi,   // Örn: Tek Grup
-                                renk: anaDersAdi.includes('MAT') ? '#2980b9' :
-                                    anaDersAdi.includes('BİM') ? '#8e44ad' : '#16a085'
-                            };
+                            if (colIndex >= 0 && rowIndex >= 0 && rowIndex < SAATLER.length) {
+                                yeniYerlesim[`${colIndex}-${rowIndex}`] = {
+                                    ad: anaDersAdi,
+                                    grupAdi: kisaGrupAdi,
+                                    oda: h.room || '',
+                                    renk: RENK_PALETI[renkIndex]
+                                };
+                            }
                         }
-                    }
+                    });
                 });
 
                 setYerlesim(yeniYerlesim);
@@ -112,17 +111,19 @@ function Anasayfa() {
                 <p>İşte mevcut ders programın.</p>
 
                 <div ref={tabloRef} className="tablo-wrapper" style={{ padding: '20px', backgroundColor: '#ecf0f1' }}>
-                    <table>
+                    <table className="modern-table schedule-table">
                         <thead>
                             <tr>
-                                <th className="baslik-hucre">Saat/Gün</th>
-                                {GUNLER.map(g => <th key={g} className="baslik-hucre">{g}</th>)}
+                                <th>Saat / Gün</th>
+                                {GUNLER.map(g => <th key={g}>{g}</th>)}
                             </tr>
                         </thead>
                         <tbody>
                             {SAATLER.map((saat, row) => (
                                 <tr key={row}>
-                                    <td className="baslik-hucre" style={{ fontWeight: 'bold' }}>{saat}</td>
+                                    <td style={{ fontWeight: 'bold', backgroundColor: '#f1f3f5', color: '#495057' }}>
+                                        {saat}-{String(parseInt(saat) + 1).padStart(2, '0')}:00
+                                    </td>
                                     {GUNLER.map((_, col) => {
                                         const key = `${col}-${row}`;
                                         const dersVerisi = yerlesim[key];
@@ -141,8 +142,9 @@ function Anasayfa() {
                                                             borderRadius: '5px'
                                                         }}
                                                     >
-                                                        <span style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: '1.2', marginBottom: '4px' }}>{dersVerisi.ad}</span>
+                                                        <span style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: '1.2', marginBottom: '2px' }}>{dersVerisi.ad}</span>
                                                         <span style={{ fontSize: '11px', opacity: 0.9, fontStyle: 'italic' }}>{dersVerisi.grupAdi}</span>
+                                                        {dersVerisi.oda && <span style={{ fontSize: '10px', opacity: 0.8 }}>{dersVerisi.oda}</span>}
                                                     </div>
                                                 )}
                                             </td>
@@ -155,7 +157,8 @@ function Anasayfa() {
                 </div>
 
                 <button className="btn-jpg-indir" onClick={jpgIndir}>
-                    📸 Programı JPG Olarak İndir
+                    <DownloadIcon size={18} color="white" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+                    Programı JPG Olarak İndir
                 </button>
             </div>
         </div>

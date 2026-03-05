@@ -1,25 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from './api';
 import './App.css';
 
 function Profile() {
     const navigate = useNavigate();
-    const [user, setUser] = useState({ fullName: '', email: '' });
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        // Hafızadaki bilgileri çekip ekrana basıyoruz
-        const kayitliKullanici = localStorage.getItem('user');
-        if (kayitliKullanici) {
-            setUser(JSON.parse(kayitliKullanici));
-        } else {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
             navigate('/');
+            return;
         }
+
+        const userObj = JSON.parse(storedUser);
+
+        // Canlı veriyi API'den çek
+        const fetchProfile = async () => {
+            try {
+                const res = await api.get(`/users/${userObj.id}`);
+                if (res.data && res.data.status) {
+                    setUser(res.data.data);
+                }
+            } catch (err) {
+                console.error('Profil yüklenemedi:', err);
+                setError('Profil bilgileri yüklenemedi.');
+                // API hata verirse localStorage'daki bilgileri kullan
+                setUser(userObj);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
     }, [navigate]);
 
-    const handleFakeSave = (e) => {
-        e.preventDefault();
-        alert("Backend düzenlemesi yapılamadığı için şifre değiştirme özelliği şu an aktif değildir.");
-    };
+    if (loading) {
+        return (
+            <div className="profil-container">
+                <p style={{ color: '#888' }}>Yükleniyor...</p>
+            </div>
+        );
+    }
+
+    if (!user) return null;
+
+    const isAdmin = user.privileges && user.privileges.includes('Admin');
 
     return (
         <div className="profil-container">
@@ -28,33 +57,54 @@ function Profile() {
                     <div className="profil-avatar-buyuk">
                         {user.fullName ? user.fullName.charAt(0).toUpperCase() : '?'}
                     </div>
-                    <h2>{user.fullName}</h2>
-                    <p style={{ color: '#888' }}>Öğrenci Hesabı</p>
+                    <h2>{user.fullName || '-'}</h2>
+                    <p style={{ color: '#888' }}>
+                        {user.privileges && user.privileges.join(' / ') + ' Hesabı' || 'Kullanıcı Hesabı'}
+                    </p>
+                    {user.privileges && user.privileges.length > 0 && (
+                        <div style={{ marginTop: '8px', display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {user.privileges.map((priv, i) => (
+                                <span key={i} style={{
+                                    padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold',
+                                    backgroundColor: priv === 'Admin' ? '#ffeaa7' : priv === 'Teacher' ? '#d4edda' : '#dfe6e9',
+                                    color: priv === 'Admin' ? '#d68910' : priv === 'Teacher' ? '#155724' : '#636e72'
+                                }}>
+                                    {priv}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                <form onSubmit={handleFakeSave}>
-                    <div className="form-group">
-                        <label>Kullanıcı Adı / İsim</label>
-                        <input type="text" value={user.fullName} disabled className="input-disabled" />
-                    </div>
+                {error && <div className="admin-msg-error" style={{ marginBottom: '15px' }}>{error}</div>}
 
-                    <div className="form-group">
-                        <label>E-posta Adresi</label>
-                        <input type="text" value={user.email} disabled className="input-disabled" />
-                    </div>
+                <div className="form-group">
+                    <label>Kullanıcı ID</label>
+                    <input type="text" value={user.userID || user.id || '-'} disabled className="input-disabled" />
+                </div>
 
-                    <hr style={{ margin: '20px 0', border: '0', borderTop: '1px solid #eee' }} />
+                <div className="form-group">
+                    <label>Ad Soyad</label>
+                    <input type="text" value={user.fullName || '-'} disabled className="input-disabled" />
+                </div>
 
-                    <div className="form-group">
-                        <label>Yeni Şifre (Devre Dışı)</label>
-                        <input type="password" placeholder="Yeni şifreniz" />
-                    </div>
+                <div className="form-group">
+                    <label>E-posta Adresi</label>
+                    <input type="text" value={user.email || '-'} disabled className="input-disabled" />
+                </div>
 
-                    <button type="submit" className="btn-fake-save">Şifreyi Güncelle</button>
-                </form>
+                <div className="form-group">
+                    <label>Telefon Numarası</label>
+                    <input type="text" value={user.phoneNo || '-'} disabled className="input-disabled" />
+                </div>
 
-                <button onClick={() => navigate('/ders-programi')} className="btn-geri">
-                    ← Ders Programına Dön
+                <div className="form-group">
+                    <label>Durum</label>
+                    <input type="text" value={user.active ? 'Aktif' : 'Pasif'} disabled className="input-disabled" />
+                </div>
+
+                <button onClick={() => navigate('/anasayfa')} className="btn-geri">
+                    ← Anasayfaya Dön
                 </button>
             </div>
         </div>

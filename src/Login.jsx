@@ -9,6 +9,7 @@ const Login = () => {
         password: ''
     });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -18,32 +19,31 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
         try {
-            // 1. Giriş yap ve temel bilgileri al
             const response = await api.post('/users/login', {
                 usernameoremail: formData.username,
                 password: formData.password
             });
             const loginData = response.data.data;
 
-            // 2. İkinci isteği atabilmek için Token'ı kaydet
-            localStorage.setItem('token', loginData.accessToken);
-
-            // 3. Kullanıcının YETKİLERİNİ çekmek için kendi profiline istek at
             const profileRes = await api.get(`/users/${loginData.id}`);
             const profileData = profileRes.data.data;
 
-            // 4. Yetkileri loginDatasına ekleyip localStorage'a son halini yaz
-            const finalUser = {
-                ...loginData,
-                privileges: profileData.privileges || [] // Backend'den gelen yetki dizisi
+            const user = {
+                id: loginData.id,
+                email: loginData.email,
+                fullName: loginData.fullName,
+                privileges: profileData.privileges || []
             };
-            localStorage.setItem('user', JSON.stringify(finalUser));
+            localStorage.setItem('user', JSON.stringify(user));
 
-            // 5. Yönlendirme Kontrolü (Veritabanında Admin mi?)
-            if (finalUser.privileges.includes('Admin')) {
+            // Yetki bazlı yönlendirme
+            if (user.privileges.includes('Admin')) {
                 navigate('/admin-panel');
+            } else if (user.privileges.includes('Teacher')) {
+                navigate('/teacher-panel');
             } else {
                 navigate('/anasayfa');
             }
@@ -51,7 +51,8 @@ const Login = () => {
         } catch (err) {
             const errorMessage = err.response?.data?.message || 'Giriş başarısız oldu, bilgilerinizi kontrol edin.';
             setError(errorMessage);
-            localStorage.removeItem('token'); // Hata olursa bozuk veriyi sil
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -89,7 +90,9 @@ const Login = () => {
                         />
                     </div>
 
-                    <button type="submit" className="button">Giriş Yap</button>
+                    <button type="submit" className="button" disabled={loading}>
+                        {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                    </button>
                 </form>
             </div>
         </div>
