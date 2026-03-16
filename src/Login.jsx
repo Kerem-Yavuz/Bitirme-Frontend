@@ -49,6 +49,7 @@ const Login = () => {
             }
 
         } catch (err) {
+            console.error("Gerçek Hata Detayı:", err.response || err);
             const errorMessage = err.response?.data?.message || 'Giriş başarısız oldu, bilgilerinizi kontrol edin.';
             setError(errorMessage);
         } finally {

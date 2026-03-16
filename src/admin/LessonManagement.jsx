@@ -42,6 +42,12 @@ function LessonManagement() {
     const [hourStatus, setHourStatus] = useState({ message: '', error: '' });
     const [selectedGroupId, setSelectedGroupId] = useState(null);
 
+    // Ön Koşul ekleme modalı
+    const [prereqModal, setPrereqModal] = useState(false);
+    const [prereqForm, setPrereqForm] = useState({ prerequisiteLessonID: '' });
+    const [prereqStatus, setPrereqStatus] = useState({ message: '', error: '' });
+    const [selectedSubsequentId, setSelectedSubsequentId] = useState(null);
+
     // Filtreler
     const [filterSemester, setFilterSemester] = useState('');
     const [filterDepartment, setFilterDepartment] = useState('');
@@ -169,6 +175,21 @@ function LessonManagement() {
         }
     };
 
+    const handlePrereqSubmit = async (e) => {
+        e.preventDefault();
+        setPrereqStatus({ message: '', error: '' });
+        try {
+            await api.post('/prerequisites/', {
+                prerequisiteLessonID: Number(prereqForm.prerequisiteLessonID),
+                subsequentLessonID: selectedSubsequentId
+            });
+            setPrereqStatus({ message: 'Ön koşul başarıyla eklendi!', error: '' });
+            setPrereqForm({ prerequisiteLessonID: '' });
+        } catch (err) {
+            setPrereqStatus({ message: '', error: err.response?.data?.message || 'Ön koşul eklenirken hata oluştu.' });
+        }
+    };
+
     const getDeptName = (id) => {
         const d = departments.find(dept => dept.departmentID === id);
         return d ? d.departmentName : '-';
@@ -183,32 +204,30 @@ function LessonManagement() {
     return (
         <div style={{ width: '100%', padding: '30px', boxSizing: 'border-box', overflowY: 'auto', height: '100%' }}>
             {/* Üst Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <button onClick={() => navigate('/admin-panel')} className="back-link">
-                        <ChevronLeftIcon size={14} /> Admin Paneli
-                    </button>
-                    <h2 style={{ margin: '5px 0 0 0', color: '#2c3e50' }}>Ders Yönetimi</h2>
-                </div>
-                <button
-                    onClick={() => { setLessonModal(true); setLessonStatus({ message: '', error: '' }); }}
-                    className="admin-btn-green"
-                    style={{ width: 'auto', padding: '10px 24px', marginTop: 0, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                    <PlusIcon size={16} /> Yeni Ders Ekle
+            <div style={{ marginBottom: '20px' }}>
+                <button onClick={() => navigate('/admin-panel')} className="back-link" style={{ marginBottom: '10px' }}>
+                    <ChevronLeftIcon size={14} /> Admin Paneli
                 </button>
+                <h2 style={{ margin: '0', color: '#2c3e50' }}>Ders Yönetimi</h2>
             </div>
 
-            {/* Filtreler */}
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <select value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} className="admin-input" style={{ width: '180px' }}>
+            {/* Filtreler ve Yeni Ders Ekle Butonu Yan Yana */}
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <select value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} className="admin-input" style={{ width: '180px', margin: 0 }}>
                     <option value="">Tüm Dönemler</option>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(s => <option key={s} value={s}>{s}. Dönem</option>)}
                 </select>
-                <select value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)} className="admin-input" style={{ width: '220px' }}>
+                <select value={filterDepartment} onChange={(e) => setFilterDepartment(e.target.value)} className="admin-input" style={{ width: '220px', margin: 0 }}>
                     <option value="">Tüm Bölümler</option>
                     {departments.map(d => <option key={d.departmentID} value={d.departmentID}>{d.departmentName}</option>)}
                 </select>
+
+                <button
+                    onClick={() => { setModalOpen(true); setStatus({ message: '', error: '' }); }}
+                    style={{ padding: '10px 24px', backgroundColor: '#8f2b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                    <PlusIcon size={16} /> Yeni Bölüm Ekle
+                </button>
             </div>
 
             {/* Tablo */}
@@ -245,6 +264,20 @@ function LessonManagement() {
                                         <td style={{ textAlign: 'center' }}>{lesson.semesterNo}</td>
                                         <td style={{ textAlign: 'center' }}>{lesson.lessonTeacherID || '-'}</td>
                                         <td style={{ textAlign: 'center' }}>
+                                            {/* Ön Koşul Butonu */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedSubsequentId(lesson.lessonID);
+                                                    setPrereqModal(true);
+                                                    setPrereqStatus({ message: '', error: '' });
+                                                    setPrereqForm({ prerequisiteLessonID: '' });
+                                                }}
+                                                className="btn-warning-sm"
+                                                style={{ marginRight: '6px' }}
+                                            >
+                                                + Ön Koşul
+                                            </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleDeleteLesson(lesson.lessonID); }}
                                                 className="btn-danger-sm"
@@ -382,6 +415,34 @@ function LessonManagement() {
                                 </select>
                             </div>
                             <button type="submit" className="admin-btn-green">Dersi Kaydet</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Ön Koşul Ekleme Modalı */}
+            {prereqModal && (
+                <div className="modal-overlay" onClick={() => setPrereqModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+                        <button className="close-btn" onClick={() => setPrereqModal(false)}>×</button>
+                        <h2 className="title" style={{ textAlign: 'center', marginBottom: '20px' }}>Ön Koşul Ekle</h2>
+
+                        {prereqStatus.error && <div className="admin-msg-error">{prereqStatus.error}</div>}
+                        {prereqStatus.message && <div className="admin-msg-success">{prereqStatus.message}</div>}
+
+                        <form onSubmit={handlePrereqSubmit}>
+                            <div className="admin-form-group">
+                                <label className="admin-label">Bu dersi alabilmek için önceden geçilmesi gereken ders:</label>
+                                <select value={prereqForm.prerequisiteLessonID} onChange={(e) => setPrereqForm({ prerequisiteLessonID: e.target.value })} className="admin-input" required>
+                                    <option value="">Lütfen Bir Ders Seçin</option>
+                                    {lessons.filter(l => l.lessonID !== selectedSubsequentId).map(l => (
+                                        <option key={l.lessonID} value={l.lessonID}>
+                                            {l.lessonName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button type="submit" className="admin-btn-green" style={{ marginTop: '10px' }}>Ön Koşulu Kaydet</button>
                         </form>
                     </div>
                 </div>

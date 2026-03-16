@@ -17,6 +17,7 @@ import DepartmentManagement from './admin/DepartmentManagement';
 import TeacherPanel from './TeacherPanel';
 import MyLessons from './teacher/MyLessons';
 import StudentList from './teacher/StudentList';
+import AIChat from './AIChat';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <Route element={
           <ProtectedRoute>
             <Layout />
+            <AIChat />
           </ProtectedRoute>
         }>
           <Route path="/anasayfa" element={<Anasayfa />} />

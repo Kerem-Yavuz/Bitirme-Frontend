@@ -53,12 +53,11 @@ function UserManagement() {
     // ===== YENİ KULLANICI EKLEME =====
     const handleAddChange = (e) => setAddForm({ ...addForm, [e.target.name]: e.target.value });
 
+    // GÜNCELLENDİ: Sadece tıklanan yetkiyi listeye koyar (Tekli Seçim)
     const handleAddPrivToggle = (priv) => {
         setAddForm(prev => ({
             ...prev,
-            privileges: prev.privileges.includes(priv)
-                ? prev.privileges.filter(p => p !== priv)
-                : [...prev.privileges, priv]
+            privileges: [priv]
         }));
     };
 
@@ -116,12 +115,11 @@ function UserManagement() {
 
     const handleEditChange = (e) => setEditForm({ ...editForm, [e.target.name]: e.target.value });
 
+    // GÜNCELLENDİ: Sadece tıklanan yetkiyi listeye koyar (Tekli Seçim)
     const handleEditPrivToggle = (priv) => {
         setEditForm(prev => ({
             ...prev,
-            privileges: prev.privileges.includes(priv)
-                ? prev.privileges.filter(p => p !== priv)
-                : [...prev.privileges, priv]
+            privileges: [priv]
         }));
     };
 
@@ -177,14 +175,16 @@ function UserManagement() {
 
     return (
         <div style={{ width: '100%', padding: '30px', boxSizing: 'border-box', overflowY: 'auto', height: '100%' }}>
-            {/* Üst Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <button onClick={() => navigate('/admin-panel')} className="back-link">
-                        <ChevronLeftIcon size={14} /> Admin Paneli
-                    </button>
-                    <h2 style={{ margin: '5px 0 0 0', color: '#2c3e50' }}>Kullanıcı Yönetimi</h2>
-                </div>
+            {/* Üst Bar - Sadece Başlık Var */}
+            <div style={{ marginBottom: '20px' }}>
+                <button onClick={() => navigate('/admin-panel')} className="back-link" style={{ marginBottom: '10px' }}>
+                    <ChevronLeftIcon size={14} /> Admin Paneli
+                </button>
+                <h2 style={{ margin: '0', color: '#2c3e50' }}>Kullanıcı Yönetimi</h2>
+            </div>
+
+            {/* Yeni Kullanıcı Ekle Butonu */}
+            <div style={{ marginBottom: '25px' }}>
                 <button
                     onClick={() => { setAddModalOpen(true); setAddStatus({ message: '', error: '' }); }}
                     className="admin-btn-blue"
@@ -308,8 +308,10 @@ function UserManagement() {
                                             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
                                                 {ALL_PRIVILEGES.map(priv => (
                                                     <label key={priv} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px', color: '#333' }}>
+                                                        {/* type="radio" YAPILDI */}
                                                         <input
-                                                            type="checkbox"
+                                                            type="radio"
+                                                            name="editPrivilegeGroup"
                                                             checked={editForm.privileges.includes(priv)}
                                                             onChange={() => handleEditPrivToggle(priv)}
                                                         />
@@ -319,7 +321,7 @@ function UserManagement() {
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                                            <button type="submit" className="admin-btn-blue" style={{ flex: 1 }}>Kaydet</button>
+                                            <button type="submit" className="admin-btn-blue" style={{ flex: 1, backgroundColor: '#8f2b3a', border: 'none' }}>Kaydet</button>
                                             <button type="button" onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '12px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}>
                                                 İptal
                                             </button>
@@ -363,7 +365,7 @@ function UserManagement() {
                                             <button
                                                 onClick={() => { setIsEditing(true); setEditStatus({ message: '', error: '' }); }}
                                                 className="admin-btn-blue"
-                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', backgroundColor: '#8f2b3a', border: 'none' }}
                                             >
                                                 <EditIcon size={16} /> Düzenle
                                             </button>
@@ -428,8 +430,10 @@ function UserManagement() {
                                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
                                     {ALL_PRIVILEGES.map(priv => (
                                         <label key={priv} style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '14px', color: '#333' }}>
+                                            {/* type="radio" YAPILDI */}
                                             <input
-                                                type="checkbox"
+                                                type="radio"
+                                                name="addPrivilegeGroup"
                                                 checked={addForm.privileges.includes(priv)}
                                                 onChange={() => handleAddPrivToggle(priv)}
                                             />
@@ -438,7 +442,9 @@ function UserManagement() {
                                     ))}
                                 </div>
                             </div>
-                            <button type="submit" className="admin-btn-blue">Kullanıcıyı Kaydet</button>
+                            <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#8f2b3a', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', marginTop: '10px' }}>
+                                Kullanıcıyı Kaydet
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -448,3 +454,4 @@ function UserManagement() {
 }
 
 export default UserManagement;
+

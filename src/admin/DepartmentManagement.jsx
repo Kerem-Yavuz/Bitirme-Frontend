@@ -75,14 +75,16 @@ function DepartmentManagement() {
 
     return (
         <div style={{ width: '100%', padding: '30px', boxSizing: 'border-box', overflowY: 'auto', height: '100%' }}>
-            {/* Üst Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                    <button onClick={() => navigate('/admin-panel')} className="back-link">
-                        <ChevronLeftIcon size={14} /> Admin Paneli
-                    </button>
-                    <h2 style={{ margin: '5px 0 0 0', color: '#2c3e50' }}>Bölüm Yönetimi</h2>
-                </div>
+            {/* Üst Bar - Sadece Başlık Var */}
+            <div style={{ marginBottom: '20px' }}>
+                <button onClick={() => navigate('/admin-panel')} className="back-link" style={{ marginBottom: '10px' }}>
+                    <ChevronLeftIcon size={14} /> Admin Paneli
+                </button>
+                <h2 style={{ margin: '0', color: '#2c3e50' }}>Bölüm Yönetimi</h2>
+            </div>
+
+            {/* Yeni Bölüm Ekle Butonu - Alt Satıra Alındı */}
+            <div style={{ marginBottom: '25px' }}>
                 <button
                     onClick={() => { setModalOpen(true); setStatus({ message: '', error: '' }); }}
                     style={{ padding: '10px 24px', backgroundColor: '#8f2b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}

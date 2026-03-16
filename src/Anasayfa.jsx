@@ -49,14 +49,37 @@ function Anasayfa() {
 
         const programiGetir = async () => {
             try {
-                const myGroupsRes = await api.get('/lessonGroups/my');
+                // Hem kayıtlı dersleri hem de derslerin dönem bilgisini almak için tüm dersleri çekiyoruz
+                const [myGroupsRes, lessonsRes] = await Promise.all([
+                    api.get('/lessonGroups/my'),
+                    api.get('/lessons')
+                ]);
+
                 const dersGruplari = myGroupsRes.data?.data || [];
+                const tumDersler = lessonsRes.data?.data || [];
+
+                // ==========================================
+                // OTOMATİK TARİH VE DÖNEM KONTROLÜ
+                // ==========================================
+                const currentMonth = new Date().getMonth() + 1; // 1-12 arası
+                const isSpring = currentMonth >= 2 && currentMonth <= 7;
+                const availableSemesters = isSpring ? [2, 4, 6, 8] : [1, 3, 5, 7];
+                // ==========================================
 
                 const yeniYerlesim = {};
 
                 dersGruplari.forEach((grup) => {
-                    const hours = grup.hours || [];
                     const anaDersAdi = grup.lessonName || "Bilinmeyen Ders";
+
+                    // Veritabanından gelen bu kullanıcının dersinin HANGİ DÖNEME ait olduğunu buluyoruz
+                    const dersBilgisi = tumDersler.find(d => d.lessonName === anaDersAdi);
+
+                    // EĞER dersin dönemi şu anki aktif döneme (mevsime) uygun değilse, TAKVİME EKLEME (Es Geç)
+                    if (dersBilgisi && !availableSemesters.includes(Number(dersBilgisi.semesterNo))) {
+                        return; // Döngüyü bu ders için kırar, bir sonrakine geçer.
+                    }
+
+                    const hours = grup.hours || [];
                     const kisaGrupAdi = grup.lessonGroupName.split(' (')[0];
                     const renkIndex = stringToColorIndex(anaDersAdi);
 

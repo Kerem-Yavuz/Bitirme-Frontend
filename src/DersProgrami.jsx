@@ -28,9 +28,18 @@ function DersProgrami() {
 
     const [kayitliDersler, setKayitliDersler] = useState([]);
 
+    // ==========================================
+    // OTOMATİK TARİH VE DÖNEM KONTROLÜ
+    // ==========================================
     const currentMonth = new Date().getMonth() + 1;
-    const isSpring = currentMonth >= 2 && currentMonth <= 6;
+    const isSpring = currentMonth >= 2 && currentMonth <= 7;
     const availableSemesters = isSpring ? [2, 4, 6, 8] : [1, 3, 5, 7];
+
+    useEffect(() => {
+        if (semesterId && !availableSemesters.includes(Number(semesterId))) {
+            navigate(`/ders-secimi/${availableSemesters[0]}`, { replace: true });
+        }
+    }, [semesterId, navigate, availableSemesters]);
 
     useEffect(() => {
         const kayitlilariGetir = async () => {
@@ -47,6 +56,8 @@ function DersProgrami() {
     }, []);
 
     useEffect(() => {
+        if (!semesterId || !availableSemesters.includes(Number(semesterId))) return;
+
         const dersleriGetir = async () => {
             setYukleniyor(true);
             setHata('');
@@ -55,7 +66,7 @@ function DersProgrami() {
                 if (response.data && response.data.status) {
                     const tumDersler = response.data.data;
                     const filtrelenmisDersler = tumDersler.filter(
-                        (ders) => Number(ders.semesterNo) === Number(semesterId)
+                        (ders) => Number(ders.semesterNo) === Number(semesterId) && availableSemesters.includes(Number(ders.semesterNo))
                     );
                     setDersler(filtrelenmisDersler);
                 }
@@ -67,9 +78,13 @@ function DersProgrami() {
             }
         };
         dersleriGetir();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [semesterId]);
 
-    const handleDersTikla = async (ders) => {
+    const handleDersTikla = async (ders, isLocked) => {
+        // Eğer ders geçilmişse tıklanmasını engelle
+        if (isLocked) return;
+
         setSeciliDers(ders);
         setModalAcik(true);
         setGruplarYukleniyor(true);
@@ -105,6 +120,36 @@ function DersProgrami() {
         }
     };
 
+    // ==========================================
+    // NOT KONTROLÜ VE DERS DURUMU HESAPLAMA
+    // ==========================================
+    const getLessonStatus = (ders) => {
+        // Öğrencinin geçmişte veya şimdi aldığı bu dersin kayıtlarını bul
+        const records = kayitliDersler.filter(kd => kd.lessonID === ders.lessonID || kd.lessonName === ders.lessonName);
+
+        if (records.length === 0) return { status: 'NEW', gradeText: '' };
+
+        // Geçer notlar dışındakiler (Başarısız sayılan veya bekleyen notlar)
+        const retakeGrades = ['FF', 'FD', 'DD', 'DC', 'PEND', null, ''];
+
+        // Herhangi bir kayıtta dersi geçmiş mi kontrol et (Eğer grade var ve başarısız listesinde değilse geçmiştir)
+        const passedRecord = records.find(r => r.grade && !retakeGrades.includes(r.grade.toUpperCase()));
+        if (passedRecord) {
+            return { status: 'PASSED', gradeText: `Geçildi (${passedRecord.grade})` };
+        }
+
+        // Şu an aktif olarak alıyor mu? (Not girilmemiş veya PEND)
+        const pendingRecord = records.find(r => !r.grade || r.grade.toUpperCase() === 'PEND');
+        if (pendingRecord) {
+            return { status: 'TAKING', gradeText: 'Kayıtlı' };
+        }
+
+        // Geçememiş ama şu an da almıyor (Yani FF, FD, DD, DC almış, tekrar seçebilir)
+        // En son aldığı notu göster
+        const lastRecord = records[records.length - 1];
+        return { status: 'RETAKE', gradeText: `Tekrar (${lastRecord.grade})` };
+    };
+
     const kayitliIdler = kayitliDersler.map(d => d.lessonGroupID);
 
     if (yukleniyor) return <div className="ana-ekran merkez-ekran"><h2>Dersler Yükleniyor...</h2></div>;
@@ -133,24 +178,52 @@ function DersProgrami() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', maxWidth: '1000px' }}>
                 {dersler.length > 0 ? (
-                    dersler.map((ders) => (
-                        <div
-                            key={ders.lessonID}
-                            onClick={() => handleDersTikla(ders)}
-                            style={{
-                                backgroundColor: 'white', padding: '25px', borderRadius: '12px',
-                                boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer',
-                                width: '250px', textAlign: 'center', borderTop: '6px solid #3498db',
-                                transition: 'transform 0.2s',
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                        >
-                            <h3 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>{ders.lessonName}</h3>
-                            <p style={{ margin: '0', fontSize: '13px', color: '#7f8c8d' }}>Bölüm: {ders.departmentName || '-'}</p>
-                            <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#7f8c8d', fontWeight: 'bold' }}>{ders.semesterNo}. Dönem</p>
-                        </div>
-                    ))
+                    dersler.map((ders) => {
+                        const statusInfo = getLessonStatus(ders);
+                        const isLocked = statusInfo.status === 'PASSED';
+                        const isRetake = statusInfo.status === 'RETAKE';
+
+                        return (
+                            <div
+                                key={ders.lessonID}
+                                onClick={() => handleDersTikla(ders, isLocked)}
+                                style={{
+                                    backgroundColor: isLocked ? '#f8f9fa' : 'white',
+                                    padding: '25px',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                                    width: '250px',
+                                    textAlign: 'center',
+                                    borderTop: `6px solid ${isLocked ? '#2ecc71' : isRetake ? '#e74c3c' : '#3498db'}`,
+                                    transition: 'transform 0.2s',
+                                    opacity: isLocked ? 0.7 : 1
+                                }}
+                                onMouseOver={(e) => { if (!isLocked) e.currentTarget.style.transform = 'translateY(-5px)' }}
+                                onMouseOut={(e) => { if (!isLocked) e.currentTarget.style.transform = 'translateY(0)' }}
+                            >
+                                <h3 style={{ margin: '0 0 10px 0', color: isLocked ? '#7f8c8d' : '#2c3e50' }}>{ders.lessonName}</h3>
+                                <p style={{ margin: '0', fontSize: '13px', color: '#7f8c8d' }}>Bölüm: {ders.departmentName || '-'}</p>
+                                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#7f8c8d', fontWeight: 'bold' }}>{ders.semesterNo}. Dönem</p>
+
+                                {/* NOT DURUMU GÖSTERGESİ */}
+                                {statusInfo.gradeText && (
+                                    <div style={{
+                                        marginTop: '15px',
+                                        padding: '5px 10px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        backgroundColor: isLocked ? '#e8f8f5' : isRetake ? '#fdedec' : '#ebf5fb',
+                                        color: isLocked ? '#27ae60' : isRetake ? '#c0392b' : '#2980b9',
+                                        display: 'inline-block'
+                                    }}>
+                                        {statusInfo.gradeText}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
                 ) : (
                     <p style={{ color: '#888', fontSize: '16px', marginTop: '20px' }}>
                         Bu dönem için sistemde kayıtlı ders bulunmuyor.
