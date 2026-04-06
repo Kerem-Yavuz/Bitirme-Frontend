@@ -1190,7 +1190,11 @@ html {
   bottom: 80px;
   right: 0;
   width: 500px;
+  max-width: calc(100vw - 60px);
+  /* Ekran daralırsa sağdan soldan taşmayı önler */
   height: 650px;
+  max-height: calc(100vh - 140px);
+  /* Masaüstünde üstten kesilmeyi çözen satır */
   background-color: white;
   border-radius: 16px;
   box-shadow: 0 15px 45px rgba(0, 0, 0, 0.15);
@@ -1203,11 +1207,14 @@ html {
 
 .ai-chat-header {
   background-color: #8f2b3a;
-  padding: 15px 20px;
+  padding: 0px 20px;
   color: white;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 50px;
+  min-height: 50px;
+  box-sizing: border-box;
 }
 
 .ai-chat-messages {
@@ -1325,5 +1332,45 @@ html {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* =========================================
+   📱 MOBİL UYUMLULUK (RESPONSIVE) KISMI 
+   ========================================= */
+@media (max-width: 992px) {
+  .ai-chat-container {
+    bottom: 15px;
+    right: 15px;
+  }
+
+  .ai-chat-window {
+    position: fixed;
+    /* Konteynerdan bağımsızlaştırıp tam ekrana yaymak için fixed yapıyoruz */
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100vw;
+    height: 100dvh;
+    /* Mobilde tarayıcı adres çubuğu açılıp kapandığında yüksekliği dinamik ayarlar */
+    max-height: 100dvh;
+    border-radius: 0;
+    /* Mobilde tam ekran olduğu için köşeleri düzleştiriyoruz */
+    border: none;
+    z-index: 10000;
+    /* Pencerenin her şeyin üstünde olmasını sağlar */
+  }
+
+  .ai-chat-input {
+    font-size: 16px;
+    /* iOS cihazlarda inputa tıklayınca sayfanın otomatik zoom yapmasını engeller */
+  }
+
+  .ai-chat-toggle-btn {
+    width: 55px;
+    /* Mobilde açma butonunu biraz küçültüyoruz ki ekranda çok yer kaplamasın */
+    height: 55px;
+    font-size: 18px;
   }
 }
