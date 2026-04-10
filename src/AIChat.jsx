@@ -9,8 +9,12 @@ import api from './api';
 
 function AIChat() {
     const [isOpen, setIsOpen] = useState(false);
+
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userName = storedUser.fullName ? storedUser.fullName.split(' ')[0] : 'öğrenci';
+
     const [messages, setMessages] = useState([
-        { sender: 'ai', text: 'Merhaba Devrim! Ben senin akıllı asistanınım. Sana nasıl yardımcı olabilirim?' }
+        { sender: 'ai', text: `Merhaba ${userName}! Ben senin akıllı asistanınım. Sana nasıl yardımcı olabilirim?` }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);

@@ -57,6 +57,20 @@ const Login = () => {
         }
     };
 
+    const handleBypass = (role = 'Student') => {
+        const fakeUser = {
+            id: role === 'Admin' ? 1 : 2,
+            email: role === 'Admin' ? "admin@bitirme.com" : "ahmet@bitirme.com",
+            fullName: role === 'Admin' ? "Admin Kullanıcı" : "Ahmet Yılmaz (Bypass)",
+            privileges: [role]
+        };
+        localStorage.setItem('user', JSON.stringify(fakeUser));
+        
+        if (role === 'Admin') navigate('/admin-panel');
+        else if (role === 'Teacher') navigate('/teacher-panel');
+        else navigate('/anasayfa');
+    };
+
     return (
         <div className="container">
             <div className="card">
@@ -94,6 +108,25 @@ const Login = () => {
                     <button type="submit" className="button" disabled={loading}>
                         {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                     </button>
+
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                        <button 
+                            type="button" 
+                            className="button" 
+                            style={{ backgroundColor: '#6c757d', flex: 1 }} 
+                            onClick={() => handleBypass('Student')}
+                        >
+                            Öğrenci Bypass
+                        </button>
+                        <button 
+                            type="button" 
+                            className="button" 
+                            style={{ backgroundColor: '#dc3545', flex: 1 }} 
+                            onClick={() => handleBypass('Admin')}
+                        >
+                            Admin Bypass
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
