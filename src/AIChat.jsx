@@ -77,22 +77,43 @@ function AIChat() {
 
                 for (const line of lines) {
                     const trimmedLine = line.trim();
-                    if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+                    if (!trimmedLine) continue;
 
-                    const message = trimmedLine.replace(/^data: /, '');
+                    // SSE formatı mı (data: ...) yoksa direkt JSON/Metin mi?
+                    const message = trimmedLine.startsWith('data: ') 
+                        ? trimmedLine.replace(/^data: /, '')
+                        : trimmedLine;
+
+                    if (message === '[DONE]') continue;
 
                     try {
                         const parsed = JSON.parse(message);
-                        const content = parsed.choices[0].delta.content || "";
-                        accumulatedText += content;
+                        
+                        // Farklı formatları kontrol et
+                        let content = "";
+                        if (parsed.choices?.[0]?.delta?.content) {
+                            content = parsed.choices[0].delta.content; // OpenAI formatı
+                        } else if (parsed.answer) {
+                            content = parsed.answer; // Senin RAG servisinin formatı
+                        } else if (typeof parsed === 'string') {
+                            content = parsed;
+                        }
 
+                        accumulatedText += content;
+                        
                         setMessages(prev => {
                             const updated = [...prev];
                             updated[updated.length - 1].text = accumulatedText;
                             return updated;
                         });
                     } catch (e) {
-                        partialBuffer = line + partialBuffer;
+                        // Eğer JSON değilse, düz metin olarak ekle (ham akış)
+                        accumulatedText += message;
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            updated[updated.length - 1].text = accumulatedText;
+                            return updated;
+                        });
                     }
                 }
             }

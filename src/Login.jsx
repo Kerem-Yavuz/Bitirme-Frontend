@@ -28,16 +28,13 @@ const Login = () => {
             });
             const loginData = response.data.data;
 
-            const profileRes = await api.get(`/users/${loginData.id}`);
-            const profileData = profileRes.data.data;
-
+            // Backend artık tüm bilgileri (id, email, fullName, privileges) tek seferde dönüyor.
+            // Token'lar tarayıcı çerezlerinde (HttpOnly) otomatik olarak saklanıyor.
             const user = {
                 id: loginData.id,
                 email: loginData.email,
                 fullName: loginData.fullName,
-                token: loginData.token,
-                refreshToken: loginData.refreshToken, // Refresh token'ı da kaydet
-                privileges: profileData.privileges || []
+                privileges: loginData.privileges || []
             };
             localStorage.setItem('user', JSON.stringify(user));
 
