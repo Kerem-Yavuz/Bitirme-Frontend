@@ -129,3 +129,12 @@ export const XIcon = ({ size = 20, color = 'currentColor', ...props }) => (
         <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
 );
+
+export const AILogo = ({ size = 20, color = 'currentColor', ...props }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+        <path d="M12 8V16" />
+        <path d="M8 12H16" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+);

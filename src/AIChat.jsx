@@ -6,6 +6,7 @@ import 'katex/dist/katex.min.css';
 import './App.css';
 // 1. API dosyamızı import ediyoruz
 import api from './api';
+import { AILogo, XIcon } from './icons';
 
 function AIChat() {
     const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +19,7 @@ function AIChat() {
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isThinking, setIsThinking] = useState(false);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
@@ -36,6 +38,7 @@ function AIChat() {
         setMessages(prev => [...prev, { sender: 'user', text: userMessage }]);
         setInput('');
         setIsLoading(true);
+        setIsThinking(true);
         setMessages(prev => [...prev, { sender: 'ai', text: '' }]);
 
         try {
@@ -99,6 +102,10 @@ function AIChat() {
                             content = parsed;
                         }
 
+                        if (content) {
+                            setIsThinking(false);
+                        }
+
                         accumulatedText += content;
                         
                         setMessages(prev => {
@@ -109,6 +116,7 @@ function AIChat() {
                     } catch (e) {
                         // Eğer JSON değilse, düz metin olarak ekle (ham akış)
                         accumulatedText += message;
+                        setIsThinking(false);
                         setMessages(prev => {
                             const updated = [...prev];
                             updated[updated.length - 1].text = accumulatedText;
@@ -126,6 +134,7 @@ function AIChat() {
             });
         } finally {
             setIsLoading(false);
+            setIsThinking(false);
         }
     };
 
@@ -134,22 +143,48 @@ function AIChat() {
             {isOpen && (
                 <div className="ai-chat-window">
                     <div className="ai-chat-header">
-                        <h3 style={{ margin: 0 }}>🤖 Akıllı Asistan</h3>
-                        <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>×</button>
+                        <div className="ai-chat-header-title">
+                            <AILogo size={24} color="white" className="ai-header-logo" />
+                            <h3 style={{ margin: 0 }}>Akıllı Asistan</h3>
+                        </div>
+                        <button onClick={() => setIsOpen(false)} className="ai-close-btn">
+                            <XIcon size={24} color="white" />
+                        </button>
                     </div>
 
                     <div className="ai-chat-messages">
                         {messages.map((msg, index) => (
-                            <div key={index} className={`ai-message ${msg.sender}`}>
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkMath]}
-                                    rehypePlugins={[rehypeKatex]}
-                                    components={{
-                                        p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
-                                    }}
-                                >
-                                    {msg.text}
-                                </ReactMarkdown>
+                            <div key={index} className={`ai-message-wrapper ${msg.sender}`}>
+                                {msg.sender === 'ai' && (
+                                    <div className="ai-avatar">
+                                        <AILogo size={18} color="white" />
+                                    </div>
+                                )}
+                                <div className={`ai-message ${msg.sender}`}>
+                                    {msg.sender === 'ai' && index === messages.length - 1 && isThinking ? (
+                                        <div className="ai-thinking">
+                                            <div className="ai-thinking-logo-mini">
+                                                <AILogo size={16} color="#8f2b3a" />
+                                            </div>
+                                            <div className="ai-thinking-dots">
+                                                <div className="ai-thinking-dot"></div>
+                                                <div className="ai-thinking-dot"></div>
+                                                <div className="ai-thinking-dot"></div>
+                                            </div>
+                                            <span style={{ marginLeft: '8px', fontSize: '13px', color: '#666' }}>Düşünüyor...</span>
+                                        </div>
+                                    ) : (
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkMath]}
+                                            rehypePlugins={[rehypeKatex]}
+                                            components={{
+                                                p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
+                                            }}
+                                        >
+                                            {msg.text}
+                                        </ReactMarkdown>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
@@ -177,8 +212,8 @@ function AIChat() {
                 </div>
             )}
 
-            <button className="ai-chat-toggle-btn" onClick={() => setIsOpen(!isOpen)}>
-                {isOpen ? '×' : 'AI'}
+            <button className={`ai-chat-toggle-btn ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+                {isOpen ? <XIcon size={28} /> : <AILogo size={32} />}
             </button>
         </div>
     );
