@@ -147,8 +147,8 @@ function AIChat() {
                             <AILogo size={24} color="white" className="ai-header-logo" />
                             <h3 style={{ margin: 0 }}>Akıllı Asistan</h3>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="ai-close-btn">
-                            <XIcon size={24} color="white" />
+                        <button onClick={() => setIsOpen(false)} className="ai-close-btn" title="Kapat">
+                            <XIcon size={20} color="white" />
                         </button>
                     </div>
 
@@ -212,9 +212,11 @@ function AIChat() {
                 </div>
             )}
 
-            <button className={`ai-chat-toggle-btn ${isOpen ? 'open' : ''}`} onClick={() => setIsOpen(!isOpen)}>
-                {isOpen ? <XIcon size={28} /> : <AILogo size={32} />}
-            </button>
+            {!isOpen && (
+                <button className="ai-chat-toggle-btn" onClick={() => setIsOpen(true)}>
+                    <AILogo size={32} />
+                </button>
+            )}
         </div>
     );
 }
