@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
 import DersProgrami from './DersProgrami';
 import Profile from './Profile';
+import Transcript from './Transcript';
 import Anasayfa from './Anasayfa';
 import Layout from './Layout';
 import ProtectedRoute from './ProtectedRoute';
@@ -36,6 +37,7 @@ function App() {
           <Route path="/anasayfa" element={<Anasayfa />} />
           <Route path="/ders-secimi/:semesterId" element={<DersProgrami />} />
           <Route path="/profil" element={<Profile />} />
+          <Route path="/transkript" element={<Transcript />} />
 
           {/* Admin Paneli */}
           <Route path="/admin-panel" element={

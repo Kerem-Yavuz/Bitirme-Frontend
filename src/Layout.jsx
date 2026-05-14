@@ -112,6 +112,9 @@ const Layout = () => {
                         <button onClick={(e) => { e.stopPropagation(); navigate('/profil'); }} className="dropdown-item">
                             <UserIcon size={16} /> Profilim
                         </button>
+                        <button onClick={(e) => { e.stopPropagation(); navigate('/transkript'); }} className="dropdown-item">
+                            <BookIcon size={16} /> Tüm Derslerim
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); cikisYap(); }} className="dropdown-item" style={{ color: '#dc3545' }}>
                             <LogOutIcon size={16} /> Çıkış Yap
                         </button>
