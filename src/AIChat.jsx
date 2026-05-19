@@ -41,6 +41,13 @@ function AIChat() {
         setIsThinking(true);
         setMessages(prev => [...prev, { sender: 'ai', text: '' }]);
 
+        const history = messages
+            .filter(msg => msg.text.trim() !== '')
+            .map(msg => ({
+                role: msg.sender === 'ai' ? 'assistant' : 'user',
+                content: msg.text
+            }));
+
         try {
             // 2. api instance'ındaki baseURL'i kullanarak dinamik URL oluşturuyoruz
             // api.defaults.baseURL genellikle "http://localhost:8001/api" olur
@@ -50,7 +57,7 @@ function AIChat() {
                     'Content-Type': 'application/json',
                     // Eğer api.js'de tanımladığın özel headerlar varsa buraya ekleyebilirsin
                 },
-                body: JSON.stringify({ question: userMessage }),
+                body: JSON.stringify({ question: userMessage, history: history }),
                 // 3. api.js'deki withCredentials ayarına uyum sağlıyoruz
                 credentials: api.defaults.withCredentials ? 'include' : 'same-origin'
             });
@@ -83,7 +90,7 @@ function AIChat() {
                     if (!trimmedLine) continue;
 
                     // SSE formatı mı (data: ...) yoksa direkt JSON/Metin mi?
-                    const message = trimmedLine.startsWith('data: ') 
+                    const message = trimmedLine.startsWith('data: ')
                         ? trimmedLine.replace(/^data: /, '')
                         : trimmedLine;
 
@@ -91,7 +98,7 @@ function AIChat() {
 
                     try {
                         const parsed = JSON.parse(message);
-                        
+
                         // Farklı formatları kontrol et
                         let content = "";
                         if (parsed.choices?.[0]?.delta?.content) {
@@ -107,7 +114,7 @@ function AIChat() {
                         }
 
                         accumulatedText += content;
-                        
+
                         setMessages(prev => {
                             const updated = [...prev];
                             updated[updated.length - 1].text = accumulatedText;
