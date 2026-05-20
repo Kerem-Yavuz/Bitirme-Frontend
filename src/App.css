@@ -1238,6 +1238,8 @@ html {
   cursor: pointer;
   transition: all 0.2s;
   color: white !important;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .ai-close-btn:hover {
@@ -1282,6 +1284,10 @@ html {
   box-shadow: 0 2px 6px rgba(143, 43, 58, 0.3);
 }
 
+.ai-avatar.spinning svg {
+  animation: logoSpin 1.5s linear infinite;
+}
+
 .ai-message {
   max-width: 80%;
   padding: 12px 16px;
@@ -1318,16 +1324,17 @@ html {
   height: 6px;
   background-color: #8f2b3a;
   border-radius: 50%;
-  margin: 0 2px;
-  animation: thinkingBounce 1.4s infinite ease-in-out both;
+  margin: 0 2.5px;
+  animation: thinkingBounce 1.2s infinite ease-in-out;
 }
 
 .ai-thinking-dot:nth-child(1) { animation-delay: -0.32s; }
 .ai-thinking-dot:nth-child(2) { animation-delay: -0.16s; }
+.ai-thinking-dot:nth-child(3) { animation-delay: 0s; }
 
 @keyframes thinkingBounce {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-  40% { transform: scale(1); opacity: 1; }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .ai-chat-footer {

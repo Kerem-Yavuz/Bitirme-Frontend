@@ -163,22 +163,18 @@ function AIChat() {
                         {messages.map((msg, index) => (
                             <div key={index} className={`ai-message-wrapper ${msg.sender}`}>
                                 {msg.sender === 'ai' && (
-                                    <div className="ai-avatar">
+                                    <div className={`ai-avatar ${index === messages.length - 1 && isThinking ? 'spinning' : ''}`}>
                                         <AILogo size={18} color="white" />
                                     </div>
                                 )}
                                 <div className={`ai-message ${msg.sender}`}>
                                     {msg.sender === 'ai' && index === messages.length - 1 && isThinking ? (
                                         <div className="ai-thinking">
-                                            <div className="ai-thinking-logo-mini">
-                                                <AILogo size={16} color="#8f2b3a" />
-                                            </div>
                                             <div className="ai-thinking-dots">
                                                 <div className="ai-thinking-dot"></div>
                                                 <div className="ai-thinking-dot"></div>
                                                 <div className="ai-thinking-dot"></div>
                                             </div>
-                                            <span style={{ marginLeft: '8px', fontSize: '13px', color: '#666' }}>Düşünüyor...</span>
                                         </div>
                                     ) : (
                                         <ReactMarkdown
