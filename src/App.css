@@ -1313,6 +1313,46 @@ html {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* AI Message Markdown Table Styles (AI Response) */
+.ai-message.ai table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ai-message.ai th {
+  background-color: rgba(143, 43, 58, 0.08);
+  color: #6b1d2b;
+  font-weight: 600;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid rgba(143, 43, 58, 0.15);
+}
+
+.ai-message.ai td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: #2d3436;
+}
+
+.ai-message.ai tr:last-child td {
+  border-bottom: none;
+}
+
+.ai-message.ai tr:nth-child(even) {
+  background-color: rgba(143, 43, 58, 0.02);
+}
+
+.ai-message.ai tr:hover {
+  background-color: rgba(143, 43, 58, 0.04);
+}
+
 .ai-thinking {
   display: flex;
   align-items: center;

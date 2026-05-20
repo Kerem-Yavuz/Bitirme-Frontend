@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
 import './App.css';
 // 1. API dosyamızı import ediyoruz
@@ -22,20 +23,35 @@ function AIChat() {
     const [isLoading, setIsLoading] = useState(false);
     const [isThinking, setIsThinking] = useState(false);
     const messagesEndRef = useRef(null);
+    const chatMessagesRef = useRef(null);
+    const shouldAutoScrollRef = useRef(true);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const handleScroll = () => {
+        if (!chatMessagesRef.current) return;
+        const { scrollHeight, clientHeight, scrollTop } = chatMessagesRef.current;
+        // Eğer kullanıcı alttan 50px'den daha fazla yukarı scroll yaptıysa otomatik aşağı kaydırmayı durdur
+        const isAtBottom = scrollHeight - clientHeight - scrollTop < 50;
+        shouldAutoScrollRef.current = isAtBottom;
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        if (shouldAutoScrollRef.current && chatMessagesRef.current) {
+            const lastMessage = messages[messages.length - 1];
+            // Kullanıcı kendi mesaj gönderdiğinde yumuşak, stream gelirken anlık scroll yapalım
+            const behavior = lastMessage?.sender === 'user' ? 'smooth' : 'auto';
+            chatMessagesRef.current.scrollTo({
+                top: chatMessagesRef.current.scrollHeight,
+                behavior
+            });
+        }
+    }, [messages, isOpen]);
 
     const handleSend = async (e) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
 
         const userMessage = input.trim();
+        shouldAutoScrollRef.current = true; // Yeni mesaj gönderildiğinde en alta kaydır
         setMessages(prev => [...prev, { sender: 'user', text: userMessage }]);
         setInput('');
         setIsLoading(true);
@@ -198,7 +214,11 @@ function AIChat() {
                         </div>
                     </div>
 
-                    <div className="ai-chat-messages">
+                    <div 
+                        className="ai-chat-messages" 
+                        ref={chatMessagesRef}
+                        onScroll={handleScroll}
+                    >
                         {messages.map((msg, index) => (
                             <div key={index} className={`ai-message-wrapper ${msg.sender}`}>
                                 {msg.sender === 'ai' && (
@@ -218,10 +238,15 @@ function AIChat() {
                                     ) : (
                                         <>
                                             <ReactMarkdown
-                                                remarkPlugins={[remarkMath]}
+                                                remarkPlugins={[remarkMath, remarkGfm]}
                                                 rehypePlugins={[rehypeKatex]}
                                                 components={{
                                                     p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
+                                                    table: ({ node, ...props }) => (
+                                                        <div style={{ overflowX: 'auto', width: '100%', margin: '12px 0' }}>
+                                                            <table {...props} />
+                                                        </div>
+                                                    ),
                                                 }}
                                             >
                                                 {msg.text}
