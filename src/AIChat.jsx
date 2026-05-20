@@ -7,11 +7,90 @@ import 'katex/dist/katex.min.css';
 import './App.css';
 // 1. API dosyamızı import ediyoruz
 import api from './api';
-import { AILogo, XIcon, MaximizeIcon, MinimizeIcon } from './icons';
+import { AILogo, XIcon, MaximizeIcon, MinimizeIcon, ClockIcon } from './icons';
+
+const GUNLER = ["", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+
+function formatHour(hourStr) {
+    if (!hourStr) return '-';
+    const parts = hourStr.split(':');
+    const h = parseInt(parts[0]);
+    return `${String(h).padStart(2, '0')}:00-${String(h + 1).padStart(2, '0')}:00`;
+}
+
+function extractRecommendations(text) {
+    if (!text) return { cleanText: "", recommendations: null };
+
+    const regex = /```recommendations\s*([\s\S]*?)(?:```|$)/;
+    const match = text.match(regex);
+
+    let cleanText = text;
+    let recommendations = null;
+
+    if (match) {
+        cleanText = text.replace(/```recommendations[\s\S]*?(?:```|$)/g, '').trim();
+        const jsonStr = match[1].trim();
+        if (jsonStr) {
+            try {
+                if (text.includes('```', match.index + 19)) {
+                    recommendations = JSON.parse(jsonStr);
+                }
+            } catch (e) {
+                // Incomplete JSON or parsing error, wait until stream closes
+            }
+        }
+    }
+    return { cleanText, recommendations };
+}
 
 function AIChat() {
     const [isOpen, setIsOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
+
+    // Modal ve ders seçimi durumları
+    const [selectedCourse, setSelectedCourse] = useState(null); // { lessonID, lessonName }
+    const [courseGroups, setCourseGroups] = useState([]);
+    const [groupsLoading, setGroupsLoading] = useState(false);
+    const [enrolledGroups, setEnrolledGroups] = useState([]);
+
+    const handleShowCourseGroups = async (course) => {
+        setSelectedCourse(course);
+        setGroupsLoading(true);
+        setCourseGroups([]);
+        try {
+            const [groupsRes, myGroupsRes] = await Promise.all([
+                api.get(`/lessonGroups?lessonID=${course.lessonID}`),
+                api.get('/lessonGroups/my')
+            ]);
+            setCourseGroups(groupsRes.data?.data || []);
+            setEnrolledGroups(myGroupsRes.data?.data || []);
+        } catch (err) {
+            console.error("Gruplar çekilemedi:", err);
+        } finally {
+            setGroupsLoading(false);
+        }
+    };
+
+    const derseKayitOl = async (grup) => {
+        try {
+            const response = await api.post('/lessonGroups/register', {
+                lessonGroupID: grup.lessonGroupID
+            });
+
+            if (response.data && response.data.status) {
+                const res = await api.get('/lessonGroups/my');
+                if (res.data && res.data.status) {
+                    setEnrolledGroups(res.data.data || []);
+                }
+                alert(`${grup.lessonGroupName} dersine başarıyla kaydoldunuz!`);
+            }
+        } catch (error) {
+            const mesaj = error.response?.data?.message || "Kayıt olurken bir hata oluştu veya zaten kayıtlısınız.";
+            alert(mesaj);
+        }
+    };
+
+    const kayitliIdler = enrolledGroups.map(d => d.lessonGroupID);
 
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     const userName = storedUser.fullName ? storedUser.fullName.split(' ')[0] : 'öğrenci';
@@ -237,25 +316,48 @@ function AIChat() {
                                         </div>
                                     ) : (
                                         <>
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkMath, remarkGfm]}
-                                                rehypePlugins={[rehypeKatex]}
-                                                components={{
-                                                    p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
-                                                    table: ({ node, ...props }) => (
-                                                        <div style={{ overflowX: 'auto', width: '100%', margin: '12px 0' }}>
-                                                            <table {...props} />
-                                                        </div>
-                                                    ),
-                                                }}
-                                            >
-                                                {msg.text}
-                                            </ReactMarkdown>
-                                            {msg.route && (
-                                                <div className="ai-route-badge">
-                                                    {msg.route === 'easy' ? '⚡ Kolay Soru Modeli' : '🧠 Detaylı Analiz Modeli'}
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const { cleanText, recommendations } = extractRecommendations(msg.text);
+                                                return (
+                                                    <>
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkMath, remarkGfm]}
+                                                            rehypePlugins={[rehypeKatex]}
+                                                            components={{
+                                                                p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
+                                                                table: ({ node, ...props }) => (
+                                                                    <div style={{ overflowX: 'auto', width: '100%', margin: '12px 0' }}>
+                                                                        <table {...props} />
+                                                                    </div>
+                                                                ),
+                                                            }}
+                                                        >
+                                                            {cleanText}
+                                                        </ReactMarkdown>
+                                                        {msg.route && (
+                                                            <div className="ai-route-badge">
+                                                                {msg.route === 'easy' ? '⚡ Kolay Soru Modeli' : '🧠 Detaylı Analiz Modeli'}
+                                                            </div>
+                                                        )}
+                                                        {recommendations && recommendations.recommended_courses && recommendations.recommended_courses.length > 0 && (
+                                                            <div className="ai-course-recommendations">
+                                                                <p className="ai-recommendation-title">Önerilen Dersler:</p>
+                                                                <div className="ai-recommendation-buttons">
+                                                                    {recommendations.recommended_courses.map((course, cIdx) => (
+                                                                        <button 
+                                                                            key={cIdx} 
+                                                                            onClick={() => handleShowCourseGroups(course)}
+                                                                            className="ai-recommend-btn"
+                                                                        >
+                                                                            📘 {course.lessonName} Al/İncele
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </>
                                     )}
                                 </div>
@@ -290,6 +392,88 @@ function AIChat() {
                 <button className="ai-chat-toggle-btn" onClick={() => setIsOpen(true)}>
                     <AILogo size={32} />
                 </button>
+            )}
+
+            {/* DERS SEÇİM MODALİ */}
+            {selectedCourse && (
+                <div className="modal-overlay" onClick={() => setSelectedCourse(null)}>
+                    <div className="modal-icerik" style={{ width: '750px', maxWidth: '95%', textAlign: 'left' }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ marginTop: '0', color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>
+                            {selectedCourse.lessonName} — Grup Seçimi
+                        </h3>
+
+                        {groupsLoading ? (
+                            <p style={{ padding: '20px 0', textAlign: 'center' }}>Gruplar aranıyor...</p>
+                        ) : courseGroups.length > 0 ? (
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                <table className="modern-table" style={{ marginTop: '15px', width: '100%' }}>
+                                    <thead>
+                                        <tr>
+                                            <th>Grup Adı</th>
+                                            <th>Kontenjan</th>
+                                            <th>Saatler</th>
+                                            <th style={{ textAlign: 'center' }}>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {courseGroups.map(grup => {
+                                            const isSelected = kayitliIdler.includes(grup.lessonGroupID);
+                                            const hours = grup.hours || [];
+
+                                            return (
+                                                <tr key={grup.lessonGroupID} style={{
+                                                    backgroundColor: isSelected ? '#f0fdf4' : 'transparent',
+                                                    transition: 'background-color 0.3s'
+                                                }}>
+                                                    <td style={{ fontWeight: 'bold' }}>{grup.lessonGroupName}</td>
+                                                    <td style={{ textAlign: 'center' }}>{grup.maxNumber || '-'}</td>
+                                                    <td>
+                                                        {hours.length > 0 ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                {hours.map((h, idx) => (
+                                                                    <span key={idx} style={{
+                                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                        fontSize: '12px', backgroundColor: '#f1f3f5',
+                                                                        padding: '3px 8px', borderRadius: '4px', color: '#495057'
+                                                                    }}>
+                                                                        <ClockIcon size={12} color="#868e96" />
+                                                                        {GUNLER[h.day] || '?'} {formatHour(h.hour)}
+                                                                        {h.room && <span style={{ color: '#868e96' }}>({h.room})</span>}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {isSelected ? (
+                                                            <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '14px' }}>
+                                                                ✓ Seçildi
+                                                            </span>
+                                                        ) : (
+                                                            <button className="btn-kayit-ol" onClick={() => derseKayitOl(grup)}>
+                                                                Seç ve Kaydol
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <p style={{ color: '#e74c3c', margin: '30px 0', fontWeight: 'bold', textAlign: 'center' }}>
+                                Bu ders için henüz tanımlanmış bir grup/saat bulunmuyor.
+                            </p>
+                        )}
+
+                        <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                            <button onClick={() => setSelectedCourse(null)} style={{ padding: '10px 20px', backgroundColor: '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                Kapat
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
