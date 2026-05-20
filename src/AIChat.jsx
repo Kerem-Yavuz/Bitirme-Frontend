@@ -6,10 +6,11 @@ import 'katex/dist/katex.min.css';
 import './App.css';
 // 1. API dosyamızı import ediyoruz
 import api from './api';
-import { AILogo, XIcon } from './icons';
+import { AILogo, XIcon, MaximizeIcon, MinimizeIcon } from './icons';
 
 function AIChat() {
     const [isOpen, setIsOpen] = useState(false);
+    const [isFullScreen, setIsFullScreen] = useState(false);
 
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
     const userName = storedUser.fullName ? storedUser.fullName.split(' ')[0] : 'öğrenci';
@@ -99,6 +100,17 @@ function AIChat() {
                     try {
                         const parsed = JSON.parse(message);
 
+                        if (parsed.route) {
+                            setMessages(prev => {
+                                const updated = [...prev];
+                                updated[updated.length - 1] = {
+                                    ...updated[updated.length - 1],
+                                    route: parsed.route
+                                };
+                                return updated;
+                            });
+                        }
+
                         // Farklı formatları kontrol et
                         let content = "";
                         if (parsed.choices?.[0]?.delta?.content) {
@@ -117,7 +129,10 @@ function AIChat() {
 
                         setMessages(prev => {
                             const updated = [...prev];
-                            updated[updated.length - 1].text = accumulatedText;
+                            updated[updated.length - 1] = {
+                                ...updated[updated.length - 1],
+                                text: accumulatedText
+                            };
                             return updated;
                         });
                     } catch (e) {
@@ -126,7 +141,10 @@ function AIChat() {
                         setIsThinking(false);
                         setMessages(prev => {
                             const updated = [...prev];
-                            updated[updated.length - 1].text = accumulatedText;
+                            updated[updated.length - 1] = {
+                                ...updated[updated.length - 1],
+                                text: accumulatedText
+                            };
                             return updated;
                         });
                     }
@@ -136,7 +154,10 @@ function AIChat() {
             console.error("AI Hatası:", error);
             setMessages(prev => {
                 const updated = [...prev];
-                updated[updated.length - 1].text = 'Bir hata oluştu.';
+                updated[updated.length - 1] = {
+                    ...updated[updated.length - 1],
+                    text: 'Bir hata oluştu.'
+                };
                 return updated;
             });
         } finally {
@@ -146,17 +167,35 @@ function AIChat() {
     };
 
     return (
-        <div className="ai-chat-container">
+        <div className={`ai-chat-container ${isFullScreen ? 'fullscreen-container' : ''}`}>
             {isOpen && (
-                <div className="ai-chat-window">
+                <div className={`ai-chat-window ${isFullScreen ? 'fullscreen' : ''}`}>
                     <div className="ai-chat-header">
                         <div className="ai-chat-header-title">
                             <AILogo size={24} color="white" className="ai-header-logo" />
                             <h3 style={{ margin: 0 }}>Akıllı Asistan</h3>
                         </div>
-                        <button onClick={() => setIsOpen(false)} className="ai-close-btn" title="Kapat">
-                            <XIcon size={20} color="white" />
-                        </button>
+                        <div className="ai-chat-header-actions">
+                            <button 
+                                type="button" 
+                                onClick={() => setIsFullScreen(!isFullScreen)} 
+                                className="ai-action-btn" 
+                                title={isFullScreen ? "Küçült" : "Tam Ekran"}
+                            >
+                                {isFullScreen ? <MinimizeIcon size={18} color="white" /> : <MaximizeIcon size={18} color="white" />}
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    setIsFullScreen(false);
+                                }} 
+                                className="ai-close-btn" 
+                                title="Kapat"
+                            >
+                                <XIcon size={20} color="white" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="ai-chat-messages">
@@ -177,15 +216,22 @@ function AIChat() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkMath]}
-                                            rehypePlugins={[rehypeKatex]}
-                                            components={{
-                                                p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
-                                            }}
-                                        >
-                                            {msg.text}
-                                        </ReactMarkdown>
+                                        <>
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkMath]}
+                                                rehypePlugins={[rehypeKatex]}
+                                                components={{
+                                                    p: ({ node, ...props }) => <p style={{ margin: 0 }} {...props} />,
+                                                }}
+                                            >
+                                                {msg.text}
+                                            </ReactMarkdown>
+                                            {msg.route && (
+                                                <div className="ai-route-badge">
+                                                    {msg.route === 'easy' ? '⚡ Kolay Soru Modeli' : '🧠 Detaylı Analiz Modeli'}
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
