@@ -120,6 +120,25 @@ function DersProgrami() {
         }
     };
 
+    const derseCikisYap = async (grup) => {
+        if (!window.confirm(`${seciliDers?.lessonName} dersini bırakmak istediğinize emin misiniz?`)) {
+            return;
+        }
+        try {
+            const response = await api.delete(`/lessonGroups/drop/${grup.lessonGroupID}`);
+
+            if (response.data && response.data.status) {
+                const res = await api.get('/lessonGroups/my');
+                if (res.data && res.data.status) {
+                    setKayitliDersler(res.data.data || []);
+                }
+            }
+        } catch (error) {
+            const mesaj = error.response?.data?.message || "Dersten çıkarken bir hata oluştu.";
+            alert(mesaj);
+        }
+    };
+
     // ==========================================
     // NOT KONTROLÜ VE DERS DURUMU HESAPLAMA
     // ==========================================
@@ -254,6 +273,7 @@ function DersProgrami() {
                                     <tbody>
                                         {seciliDersGruplari.map(grup => {
                                             const isSelected = kayitliIdler.includes(grup.lessonGroupID);
+                                            const registeredRecord = kayitliDersler.find(kd => kd.lessonGroupID === grup.lessonGroupID);
                                             const hours = grup.hours || [];
 
                                             return (
@@ -282,9 +302,35 @@ function DersProgrami() {
                                                     </td>
                                                     <td style={{ textAlign: 'center' }}>
                                                         {isSelected ? (
-                                                            <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '14px' }}>
-                                                                ✓ Seçildi
-                                                            </span>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                                                                <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '14px' }}>
+                                                                    ✓ Seçildi
+                                                                </span>
+                                                                {(!registeredRecord || !registeredRecord.grade || registeredRecord.grade.toUpperCase() === 'PEND') ? (
+                                                                    <button 
+                                                                        onClick={() => derseCikisYap(grup)}
+                                                                        style={{
+                                                                            padding: '4px 8px',
+                                                                            backgroundColor: '#e74c3c',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            borderRadius: '4px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '11px',
+                                                                            fontWeight: 'bold',
+                                                                            transition: 'background-color 0.2s'
+                                                                        }}
+                                                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c0392b'}
+                                                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e74c3c'}
+                                                                    >
+                                                                        Dersi Bırak
+                                                                    </button>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '11px', color: '#7f8c8d', fontWeight: 'bold' }}>
+                                                                        Not: {registeredRecord.grade}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         ) : (
                                                             <button className="btn-kayit-ol" onClick={() => derseKayitOl(grup)}>
                                                                 Seç ve Kaydol
